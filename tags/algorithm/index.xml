@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <title>Algorithm on Howie</title>
+        <link>https://yanghaoyu.xyz/tags/algorithm/</link>
+        <description>Recent content in Algorithm on Howie</description>
+        <generator>Hugo -- gohugo.io</generator>
+        <language>en-us</language>
+        <lastBuildDate>Thu, 03 Jun 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://yanghaoyu.xyz/tags/algorithm/index.xml" rel="self" type="application/rss+xml" /><item>
+        <title>JVM - GC算法</title>
+        <link>https://yanghaoyu.xyz/b/jvm-gc%E7%AE%97%E6%B3%95/</link>
+        <pubDate>Thu, 03 Jun 2021 00:00:00 +0000</pubDate>
+        
+        <guid>https://yanghaoyu.xyz/b/jvm-gc%E7%AE%97%E6%B3%95/</guid>
+        <description>&lt;h2 id=&#34;回收哪些空间&#34;&gt;回收哪些空间?&lt;/h2&gt;
+&lt;p&gt;JVM 要求回收&lt;code&gt;堆&lt;/code&gt;,&lt;code&gt;方法区&lt;/code&gt;中的垃圾&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;在堆中回收&lt;code&gt;没有指针指向的对象&lt;/code&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;对于方法区, JVM 确实说过可以不要求虚拟机在永久代实现垃圾收集,
+对于永久代的回收主要是回收&lt;code&gt;废弃常量&lt;/code&gt;和&lt;code&gt;无用的类&lt;/code&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;废弃常量&lt;/code&gt;
+在字符串常量池中存在 &lt;code&gt;&amp;quot;abc&amp;quot;&lt;/code&gt;,但是没有任何指针指向这个字面量,那么这个&lt;code&gt;&amp;quot;abc&amp;quot;&lt;/code&gt;就是废弃常量,在 gc 时会被清理&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;无用的类&lt;/code&gt;&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;该类所以实例已被回收&lt;/li&gt;
+&lt;li&gt;这个类的类对象没有被引用&lt;/li&gt;
+&lt;li&gt;该类的 ClassLoader 已被回收&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;如果某个满足上述上条件, 则这个类判定为&lt;code&gt;无用的类&lt;/code&gt;, 可以被回收(不是一定被回收)
+可以使用 &lt;code&gt;-Xnoclassgc&lt;/code&gt;这个虚拟机选项 进行控制&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;自从&lt;code&gt;方法区&lt;/code&gt;的实现由&lt;code&gt;永久代&lt;/code&gt;变为&lt;code&gt;元空间&lt;/code&gt;, 方法区的溢出的情况大大减少&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2 id=&#34;如何判断哪些对象需要被回收&#34;&gt;如何判断哪些对象需要被回收?&lt;/h2&gt;
+&lt;h3 id=&#34;1-引用计数算法&#34;&gt;1. 引用计数算法&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;给对象添加一个引用计数器,如果被指针引用起来,则计数器+1,当指针不在引用该对象时,计数器-1,当计数器==0,则释放该对象&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;引用计数法的实现简单,效率高,但是 JVM 并未使用该算法,主要原因是这种算法很难解决&lt;code&gt;循环引用&lt;/code&gt;的问题&lt;/p&gt;
+&lt;p&gt;如下图, a 引用了 b,b 也引用了 a,但是没有其他指向 a 的指针,也没有其他指向 b 的指针,这两个对象都是无法使用的,理应删除,但是由于计数器不为 0,这两个对象依旧不会被释放
+&lt;img src=&#34;https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/recycle-ref.png&#34;
+	
+	
+	
+	loading=&#34;lazy&#34;
+	
+		alt=&#34;ref&#34;
+	
+	
+&gt;&lt;/p&gt;
+&lt;h3 id=&#34;2可达性分析&#34;&gt;2.可达性分析&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;这种算法就是把所有对象构成一张图,对该图进行遍历,判断结点是否可达,如果可达,表明该对象有可能被使用,则不释放,如果不可达,则释放该对象&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;JVM 规定从 GC Root 开始遍历,GC Root 主要包括以下几种对象:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;虚拟机栈(栈帧的本地变量表)中引用的对象&lt;/li&gt;
+&lt;li&gt;方法区(永久代/元空间)中静态属性引用的对象&lt;/li&gt;
+&lt;li&gt;方法区(永久代/元空间)中常量引用的对象&lt;/li&gt;
+&lt;li&gt;本地方法栈 JNI 引用到的对象 (native 方法引用的对象)&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img src=&#34;https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/gc-root.png&#34;
+	
+	
+	
+	loading=&#34;lazy&#34;
+	
+		alt=&#34;可达性分析&#34;
+	
+	
+&gt;&lt;/p&gt;
+&lt;h2 id=&#34;怎样回收对象&#34;&gt;怎样回收对象?&lt;/h2&gt;
+&lt;h3 id=&#34;1-标记清除算法-mark-and-sweep&#34;&gt;1. 标记清除算法 (Mark-And-Sweep)&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;这个算法分为两个阶段
+标记阶段: 首先把需要回收的对象标记出来
+清除阶段: 对带标记的对象进行清理&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;&lt;img src=&#34;https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/mark-and-swap.png&#34;
+	
+	
+	
+	loading=&#34;lazy&#34;
+	
+		alt=&#34;标记清除算法&#34;
+	
+	
+&gt;&lt;/p&gt;
+&lt;p&gt;这种算法会产生大量的内存碎片,使得内存利用率降低,造成在生成新对象时查找下一个空闲块花费大量时间,效率降低&lt;/p&gt;
+&lt;h3 id=&#34;2-复制算法-copying&#34;&gt;2. 复制算法 (Copying)&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;这种算法解决了&lt;code&gt;标记清除算法&lt;/code&gt;产生内存碎片的问题,它把内存分成 2 块,每次使用其中一块,每次进行清理时,把存活的对象复制到另一块,再把当前使用的块一次性全部清理&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;&lt;img src=&#34;https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/copying.png&#34;
+	
+	
+	
+	loading=&#34;lazy&#34;
+	
+		alt=&#34;复制算法&#34;
+	
+	
+&gt;&lt;/p&gt;
+&lt;p&gt;这种算法的弊端主要在于可使用的内存降低了 50%,并且对于大对象的复制是非常耗时的,效率降低&lt;/p&gt;
+&lt;h3 id=&#34;3标记整理算法-mark-and-compact&#34;&gt;3.标记整理算法 (Mark-And-Compact)&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;这种算法主要思想为:在清理阶段需要把存活的对象全部向一端移动,然后直接回收掉边界以外的内存&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;&lt;img src=&#34;https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/mark-and-compact.png&#34;
+	
+	
+	
+	loading=&#34;lazy&#34;
+	
+		alt=&#34;标记整理算法&#34;
+	
+	
+&gt;&lt;/p&gt;
+&lt;h3 id=&#34;4-分代收集算法-generation-collection&#34;&gt;4. 分代收集算法 (Generation Collection)&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;这种算法综合使用了以上几种算法, 是主流的 GC 算法&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;JVM 把堆区划分为两个年代,根据年代的不同而采用不同的算法&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;code&gt;新生代 (Young Gen)&lt;/code&gt; 这个区域对象存活率较低,大批对象死亡,采用复制算法清理这个区域的对象,占 1/3&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;老年代(Old Gen)&lt;/code&gt; 这个区域对象存活率高,采用标记整理算法,占 2/3&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;JVM 在新生代使用复制算法,它把新生代分为两块&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;code&gt;伊甸园(Eden)&lt;/code&gt; 占新生代 8/10&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;幸存者(Survivor)&lt;/code&gt; 占新生代 2/10&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;其中幸存者又被分为两块&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;code&gt;From&lt;/code&gt; 占幸存者 1/2&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;To&lt;/code&gt; 占幸存者 1/2&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;当 Eden 区满时,会除法 Minor GC,对新生代使用复制算法,把 Eden 和目前正在使用的 Survivor 区的垃圾进行标记,然后把可达的对象复制到另一个 Survivor 区域,并回收垃圾。随着新对象的生产，Eden 再次满时会使用相同的算法，对象会在 From 和 To 之间来回移动，如果这个移动超过 15 次(可以通过&lt;code&gt;-XX:MaxTenuringThreshold&lt;/code&gt; 设置)，该对象会被放进老年代。&lt;/p&gt;
+&lt;p&gt;JVM 存在&lt;code&gt;内存担保机制&lt;/code&gt;,即大对象直接进入老年代,不会经过新生代&lt;/p&gt;
+&lt;p&gt;当老年代的对象越来越多,直到老年代内存放不下了,会触发 Full GC 对新生代、老生代、方法区进行回收&lt;/p&gt;
+</description>
+        </item>
+        
+    </channel>
+</rss>

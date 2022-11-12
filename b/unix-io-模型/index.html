@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='《 UNIX 网络编程 》把 IO 模型主要分为 5 种
+阻塞 IO 模型 非阻塞 IO 模型 IO 多路复用模型 信号驱动 IO 模型 异步 IO 模型 1. 阻塞 IO 阻塞 IO 模型 是最简单的模型，这种模型程序发起 recvform 系统调用，一直阻塞，直到 OS kernel 把数据准备好，再把数据拷贝到用户空间，才会返回到程序，让程序处理数据
+由此可见，阻塞 IO 模型 会在两个地方进行阻塞
+在发起 recvform 之后一直等待数据准备完毕 在数据准备好后需要等待 OS 内核拷贝到用户空间程序 模型简单，实现难度低，适用于并发量较小的应用开发，但是由于整个过程都被阻塞，性能较低
+单线程 for true { var client = accept(serverFd) // 等待客户端建立连接 var n int = read(client, buffer) // 读入客户端发来的数据, 网卡 -&amp;gt; 内核缓冲区 -&amp;gt; 用户缓冲区 handle(buffer) // 处理数据 close(serverFd) // 关闭连接 } 多线程 服务端使用多线程，可以完成并发处理，但是随着线程数的变多，占用的内存会越来越大，上下文的开销也会越来越大, 为每一个连接都开启一个线程也不一定是一个好的选择'><title>UNIX IO 模型</title>
+
+<link rel='canonical' href='https://yanghaoyu.xyz/b/unix-io-%E6%A8%A1%E5%9E%8B/'>
+
+<link rel="stylesheet" href="/scss/style.min.be7bdd4e56c8a6c3c4d30c70154e7694c74256238402d9fd178f53754c079396.css"><meta property='og:title' content='UNIX IO 模型'>
+<meta property='og:description' content='《 UNIX 网络编程 》把 IO 模型主要分为 5 种
+阻塞 IO 模型 非阻塞 IO 模型 IO 多路复用模型 信号驱动 IO 模型 异步 IO 模型 1. 阻塞 IO 阻塞 IO 模型 是最简单的模型，这种模型程序发起 recvform 系统调用，一直阻塞，直到 OS kernel 把数据准备好，再把数据拷贝到用户空间，才会返回到程序，让程序处理数据
+由此可见，阻塞 IO 模型 会在两个地方进行阻塞
+在发起 recvform 之后一直等待数据准备完毕 在数据准备好后需要等待 OS 内核拷贝到用户空间程序 模型简单，实现难度低，适用于并发量较小的应用开发，但是由于整个过程都被阻塞，性能较低
+单线程 for true { var client = accept(serverFd) // 等待客户端建立连接 var n int = read(client, buffer) // 读入客户端发来的数据, 网卡 -&amp;gt; 内核缓冲区 -&amp;gt; 用户缓冲区 handle(buffer) // 处理数据 close(serverFd) // 关闭连接 } 多线程 服务端使用多线程，可以完成并发处理，但是随着线程数的变多，占用的内存会越来越大，上下文的开销也会越来越大, 为每一个连接都开启一个线程也不一定是一个好的选择'>
+<meta property='og:url' content='https://yanghaoyu.xyz/b/unix-io-%E6%A8%A1%E5%9E%8B/'>
+<meta property='og:site_name' content='Howie'>
+<meta property='og:type' content='article'><meta property='article:section' content='Blogs' /><meta property='article:tag' content='IO' /><meta property='article:published_time' content='2022-04-22T00:00:00&#43;00:00'/><meta property='article:modified_time' content='2022-04-22T00:00:00&#43;00:00'/><meta property='og:image' content='https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/bio.png' />
+<meta name="twitter:title" content="UNIX IO 模型">
+<meta name="twitter:description" content="《 UNIX 网络编程 》把 IO 模型主要分为 5 种
+阻塞 IO 模型 非阻塞 IO 模型 IO 多路复用模型 信号驱动 IO 模型 异步 IO 模型 1. 阻塞 IO 阻塞 IO 模型 是最简单的模型，这种模型程序发起 recvform 系统调用，一直阻塞，直到 OS kernel 把数据准备好，再把数据拷贝到用户空间，才会返回到程序，让程序处理数据
+由此可见，阻塞 IO 模型 会在两个地方进行阻塞
+在发起 recvform 之后一直等待数据准备完毕 在数据准备好后需要等待 OS 内核拷贝到用户空间程序 模型简单，实现难度低，适用于并发量较小的应用开发，但是由于整个过程都被阻塞，性能较低
+单线程 for true { var client = accept(serverFd) // 等待客户端建立连接 var n int = read(client, buffer) // 读入客户端发来的数据, 网卡 -&amp;gt; 内核缓冲区 -&amp;gt; 用户缓冲区 handle(buffer) // 处理数据 close(serverFd) // 关闭连接 } 多线程 服务端使用多线程，可以完成并发处理，但是随着线程数的变多，占用的内存会越来越大，上下文的开销也会越来越大, 为每一个连接都开启一个线程也不一定是一个好的选择"><meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content='https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/bio.png' />
+    <link rel="shortcut icon" href="/img/favicon.ico" />
+
+  
+    </head>
+    <body class="
+    article-page
+    ">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex on-phone--column extended"><aside class="sidebar left-sidebar sticky ">
+    <button class="hamburger hamburger--spin" type="button" id="toggle-menu" aria-label="Toggle Menu">
+        <span class="hamburger-box">
+            <span class="hamburger-inner"></span>
+        </span>
+    </button>
+
+    <header>
+        
+            
+            <figure class="site-avatar">
+                <a href="/">
+                
+                    
+                    
+                    
+                        
+                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                            height="300" class="site-logo" loading="lazy" alt="Avatar">
+                    
+                
+                </a>
+                
+                    <span class="emoji">😜</span>
+                
+            </figure>
+            
+        
+        
+        <div class="site-meta">
+            <h1 class="site-name"><a href="/">Howie</a></h1>
+            <h2 class="site-description">Refactor World</h2>
+        </div>
+    </header><ol class="social-menu">
+            
+                <li>
+                    <a 
+                        href='https://github.com/howieyoung91'
+                        target="_blank"
+                        title="GitHub"
+                    >
+                        
+                        
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-brand-github" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+  <path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5" />
+</svg>
+                        
+                    </a>
+                </li>
+            
+                <li>
+                    <a 
+                        href='https://www.instagram.com/howieyoung824/'
+                        target="_blank"
+                        title="Instagram"
+                    >
+                        
+                        
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-brand-instagram" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <rect x="4" y="4" width="16" height="16" rx="4" />
+    <circle cx="12" cy="12" r="3" />
+    <line x1="16.5" y1="7.5" x2="16.5" y2="7.501" />
+  </svg>
+                        
+                    </a>
+                </li>
+            
+                <li>
+                    <a 
+                        href='mailto:ishowieyoung@icloud.com'
+                        target="_blank"
+                        title="Mail"
+                    >
+                        
+                        
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-mail" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <polyline points="3 7 12 13 21 7" />
+  </svg>
+                        
+                    </a>
+                </li>
+            
+        </ol><ol class="menu" id="main-menu">
+        
+        
+        
+
+        <li >
+            <a href='/tags/%E6%89%8B%E5%86%99spring' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-file-text" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+    <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+    <line x1="9" y1="9" x2="10" y2="9" />
+    <line x1="9" y1="13" x2="15" y2="13" />
+    <line x1="9" y1="17" x2="15" y2="17" />
+</svg>
+                
+                <span>Imitate Spring</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/tags/imitate-docker' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-file-text" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+    <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+    <line x1="9" y1="9" x2="10" y2="9" />
+    <line x1="9" y1="13" x2="15" y2="13" />
+    <line x1="9" y1="17" x2="15" y2="17" />
+</svg>
+                
+                <span>Imitate Docker</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/search/' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-search" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="10" cy="10" r="7" />
+  <line x1="21" y1="21" x2="15" y2="15" />
+</svg>
+
+
+
+                
+                <span>Search</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/archives/' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-archive" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <rect x="3" y="4" width="18" height="4" rx="2" />
+  <path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-10" />
+  <line x1="10" y1="12" x2="14" y2="12" />
+</svg>
+
+
+
+                
+                <span>Archives</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/about/' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-user" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="7" r="4" />
+  <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+</svg>
+
+
+
+                
+                <span>About</span>
+            </a>
+        </li>
+        
+
+        <div class="menu-bottom-section">
+            
+            
+                <li id="dark-mode-toggle">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="8" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-right" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="16" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <span>Dark Mode</span>
+                </li>
+            
+        </div>
+    </ol>
+</aside>
+<main class="main full-width">
+    <article class="has-image main-article">
+    <header class="article-header">
+        <div class="article-image">
+            <a href="/b/unix-io-%E6%A8%A1%E5%9E%8B/">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/bio.png" loading="lazy" alt="Featured image of post UNIX IO 模型" />
+                
+            </a>
+        </div>
+    
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/os/" >
+                OS
+            </a>
+        
+            <a href="/categories/network/" >
+                Network
+            </a>
+        
+        
+            <a href="/tags/io/" >
+                IO
+            </a>
+        
+    </header>
+    
+
+    <div class="article-title-wrapper">
+        <h2 class="article-title">
+            <a href="/b/unix-io-%E6%A8%A1%E5%9E%8B/">UNIX IO 模型</a>
+        </h2>
+    
+        
+    </div>
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Apr 22, 2022</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    3 minute read
+                </time>
+            </div>
+        
+    </footer>
+    
+
+    
+</div>
+</header>
+
+    <section class="article-content">
+    
+    
+    <p>《 UNIX 网络编程 》把 IO 模型主要分为 5 种</p>
+<ol>
+<li>阻塞 IO 模型</li>
+<li>非阻塞 IO 模型</li>
+<li>IO 多路复用模型</li>
+<li>信号驱动 IO 模型</li>
+<li>异步 IO 模型</li>
+</ol>
+<h3 id="1-阻塞-io">1. 阻塞 IO</h3>
+<p><code>阻塞 IO 模型</code> 是最简单的模型，这种模型程序发起 <code>recvform</code> 系统调用，一直阻塞，直到 OS kernel 把数据准备好，再把数据拷贝到用户空间，才会返回到程序，让程序处理数据</p>
+<p><img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/bio.png"
+	
+	
+	
+	loading="lazy"
+	
+		alt="bio"
+	
+	
+></p>
+<p>由此可见，<code>阻塞 IO 模型</code> 会在两个地方进行阻塞</p>
+<ol>
+<li>在发起 <code>recvform</code> 之后一直等待数据准备完毕</li>
+<li>在数据准备好后需要等待 OS 内核拷贝到用户空间程序</li>
+</ol>
+<p>模型简单，实现难度低，适用于并发量较小的应用开发，但是由于整个过程都被阻塞，性能较低</p>
+<h4 id="单线程">单线程</h4>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="k">for</span> <span class="kc">true</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="kd">var</span> <span class="nx">client</span> <span class="p">=</span> <span class="nf">accept</span><span class="p">(</span><span class="nx">serverFd</span><span class="p">)</span>    <span class="c1">// 等待客户端建立连接
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="kd">var</span> <span class="nx">n</span> <span class="kt">int</span> <span class="p">=</span> <span class="nf">read</span><span class="p">(</span><span class="nx">client</span><span class="p">,</span> <span class="nx">buffer</span><span class="p">)</span> <span class="c1">// 读入客户端发来的数据, 网卡 -&gt; 内核缓冲区 -&gt; 用户缓冲区
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="nf">handle</span><span class="p">(</span><span class="nx">buffer</span><span class="p">)</span>  <span class="c1">// 处理数据
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="nb">close</span><span class="p">(</span><span class="nx">serverFd</span><span class="p">)</span> <span class="c1">// 关闭连接
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">}</span>
+</span></span></code></pre></div><h4 id="多线程">多线程</h4>
+<p>服务端使用多线程，可以完成并发处理，但是随着线程数的变多，占用的内存会越来越大，上下文的开销也会越来越大,
+为每一个连接都开启一个线程也不一定是一个好的选择</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="k">for</span> <span class="kc">true</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="kd">var</span> <span class="nx">client</span> <span class="p">=</span> <span class="nf">accept</span><span class="p">(</span><span class="nx">serverFd</span><span class="p">)</span>      <span class="c1">// 等待客户端建立连接
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">var</span> <span class="nx">n</span> <span class="kt">int</span> <span class="p">=</span> <span class="nf">read</span><span class="p">(</span><span class="nx">client</span><span class="p">,</span> <span class="nx">buffer</span><span class="p">)</span> <span class="c1">// 读入客户端发来的数据, 网卡 -&gt; 内核缓冲区 -&gt; 用户缓冲区
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nf">handle</span><span class="p">(</span><span class="nx">buffer</span><span class="p">)</span>  <span class="c1">// 处理数据
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nb">close</span><span class="p">(</span><span class="nx">serverFd</span><span class="p">)</span> <span class="c1">// 关闭连接
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><h3 id="2-非阻塞-io-模型">2. 非阻塞 IO 模型</h3>
+<p><code>非阻塞 IO 模型</code> 相对于 <code>阻塞 IO 模型</code> 来说，多了一个轮询机制</p>
+<p>发起 <code>recvform</code> 系统调用之后，os kernel 会看看数据是否准备好，如果没有准备好,则会返回 <code>EWOULDBLOCK</code> 错误码,
+收到错误码之后，程序便知道了数据还没准备好，就可以先去处理其他任务，如果 os kernel 发现数据已经准备好了，就会把数据拷贝到用户空间(阻塞)，让程序进行处理</p>
+<p><img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/io2.png"
+	
+	
+	
+	loading="lazy"
+	
+		alt="io"
+	
+	
+></p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nf">setNonBlocking</span><span class="p">(</span><span class="nx">serverFd</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="kd">var</span> <span class="nx">clientFds</span> <span class="p">=</span> <span class="nb">make</span><span class="p">([]</span><span class="nx">fd</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="kc">true</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="c1">// 检查是否有新的连接
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="kd">var</span> <span class="nx">clientFd</span> <span class="p">=</span> <span class="nf">accept</span><span class="p">(</span><span class="nx">serverFd</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="nx">clientFd</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">append</span><span class="p">(</span><span class="nx">clientFds</span><span class="p">,</span> <span class="nx">clientFd</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// 做点其他事
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="c1">// 遍历所有连接, 处理数据
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">clientFd</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">clientFds</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">var</span> <span class="nx">n</span> <span class="kt">int</span> <span class="p">=</span> <span class="nf">read</span><span class="p">(</span><span class="nx">clientFd</span><span class="p">,</span> <span class="nx">buffer</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">n</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="c1">// 数据到达
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>      <span class="nf">handle</span><span class="p">(</span><span class="nx">buffer</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="c1">// 数据没到的时候可以考虑做点其他事
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><p>我们使用一个数组 <code>clientFds</code> 存放客户端连接，在每次检查是否有新的连接的时候去处理旧的客户端连接发过来的数据，这样使用一个线程就完成了对多个客户端连接的处理</p>
+<h3 id="3-io-多路复用">3. IO 多路复用</h3>
+<p><code>非阻塞 IO 模型</code> 在一个死循环中不断遍历 <code>clientFds</code> 发起 <code>recvform</code> 系统调用，这其实是浪费了很大一部分 CPU 资源，是非常不划算的，所以还得依赖于操作系统，我们把感兴趣的 fd 发送给 OS，让 OS 在内核中进行遍历确定哪些 fd 可读可写，然后把可读可写的 fd 返回给程序，让用户线程处理</p>
+<h4 id="1-select">1. <code>select</code></h4>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">var</span> <span class="nx">clientFds</span> <span class="p">=</span> <span class="nb">make</span><span class="p">([]</span><span class="nx">fd</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="kc">true</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="kd">var</span> <span class="nx">clientFd</span> <span class="p">=</span> <span class="nf">accept</span><span class="p">(</span><span class="nx">serverFd</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="c1">// 把新的连接添加进去, 让 OS 遍历
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="nb">append</span><span class="p">(</span><span class="nx">clientFds</span><span class="p">,</span> <span class="nx">clientFd</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="kd">var</span> <span class="nx">fds</span> <span class="p">=</span> <span class="k">select</span><span class="p">(</span><span class="nx">clientFds</span><span class="p">)</span> <span class="c1">// 让 OS 去遍历数组
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="c1">// 再次遍历数组
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">fd</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">fds</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// 只处理已经准备好的
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">if</span> <span class="nx">fd</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="kd">var</span> <span class="nx">n</span> <span class="p">=</span> <span class="nf">read</span><span class="p">(</span><span class="nx">fd</span><span class="p">,</span> <span class="nx">buffer</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">      <span class="c1">// 处理数据
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>      <span class="nf">handle</span><span class="p">(</span><span class="nx">buffer</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><p>相比起 非阻塞 IO，使用 <code>select</code> 时的系统调用次数大大降低 (1 次 <code>select</code>+n 次 <code>read</code>)
+但是 <code>select</code> 仍有缺点，主要有三个</p>
+<ol>
+<li><code>select</code> 需要把传入的 <code>clientFds</code> 再拷贝一份到内核</li>
+<li>os kernel 遍历 <code>clientFds</code> 依旧是同步的</li>
+<li>返回的仅仅是可读文件描述的个数</li>
+</ol>
+<p>上面我都是用 golang 伪代码来描述的，下面是 select 函数签名</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">select</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">  <span class="kt">int</span>             <span class="n">nfds</span><span class="p">,</span>       <span class="c1">// 监听多少个文件描述符, 单个线程最多为 1024
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="n">fd_set</span>         <span class="o">*</span><span class="n">readfds</span><span class="p">,</span>    <span class="c1">// 可读的文件描述符集合, 出参
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="n">fd_set</span>         <span class="o">*</span><span class="n">writefds</span><span class="p">,</span>   <span class="c1">// 可写的文件描述符集合, 出参
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="n">fd_set</span>         <span class="o">*</span><span class="n">exceptfds</span><span class="p">,</span>  <span class="c1">// 异常发生文件描述符集合, 出参
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="k">struct</span> <span class="n">timeval</span> <span class="o">*</span><span class="n">timeout</span>     <span class="c1">// 超时时间, 设置为 NULL 则阻塞, 设置为 0 则轮询
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">struct</span> <span class="n">timeval</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="n">time_t</span>      <span class="n">tv_sec</span><span class="p">;</span>    <span class="c1">// 秒
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="n">suseconds_t</span> <span class="n">tv_usec</span><span class="p">;</span>   <span class="c1">// 微秒
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">};</span>
+</span></span></code></pre></div><h4 id="2-poll">2. <code>poll</code></h4>
+<p><code>poll</code> 和<code>select</code> 并无太大区别，仅仅去掉了单个线程最多监听 1024 个 fd 限制</p>
+<h4 id="3-epoll">3. <code>epoll</code></h4>
+<p><code>epoll</code> 真正地解决了 <code>select</code> 的三个问题</p>
+<ol>
+<li>在内核中保存一份 fd 的集合，程序只需告诉 OS 需要修改的部分即可</li>
+<li>OS 采用异步 IO 事件找到就绪的 fd，而不通过轮询</li>
+<li>返回已经就绪的 fd 集合，无需程序再次遍历整个文件描述符集合找到就绪的 fd</li>
+</ol>
+<p><code>epoll</code>主要有三个函数</p>
+<ol>
+<li>创建一个 epoll 句柄</li>
+</ol>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">epoll_create</span><span class="p">(</span><span class="kt">int</span> <span class="n">size</span><span class="p">);</span>
+</span></span></code></pre></div><ol start="2">
+<li>向内核添加，修改或删除要监听的文件描述符</li>
+</ol>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">epoll_ctl</span><span class="p">(</span><span class="kt">int</span> <span class="n">epfd</span><span class="p">,</span> <span class="kt">int</span> <span class="n">op</span><span class="p">,</span> <span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="k">struct</span> <span class="n">epoll_event</span> <span class="o">*</span><span class="n">event</span><span class="p">);</span>
+</span></span></code></pre></div><ol start="3">
+<li>让操作系统检查 fd 并把就绪的 fd 返回</li>
+</ol>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">epoll_wait</span><span class="p">(</span><span class="kt">int</span> <span class="n">epfd</span><span class="p">,</span> <span class="k">struct</span> <span class="n">epoll_event</span> <span class="o">*</span><span class="n">events</span><span class="p">,</span> <span class="kt">int</span> <span class="n">max_events</span><span class="p">,</span> <span class="kt">int</span> <span class="n">timeout</span><span class="p">);</span>
+</span></span></code></pre></div><p>伪代码如下:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="c1">// 在内核中创建 epoll 对象
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">epfd</span> <span class="o">=</span> <span class="n">epoll_create</span><span class="p">(</span><span class="mi">256</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// 放入想监听的 fd
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="n">epoll_ctl</span><span class="p">(</span><span class="n">epfd</span><span class="p">,</span> <span class="n">EPOLL_CTL_ADD</span><span class="p">,</span> <span class="n">listenfd</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ev</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">while</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="c1">// 让 OS 检查 fd
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="kt">int</span> <span class="n">nfds</span> <span class="o">=</span> <span class="n">epoll_wait</span><span class="p">(</span><span class="n">epfd</span><span class="p">,</span> <span class="n">events</span> <span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="k">for</span><span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">&lt;</span> <span class="n">nfds</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span><span class="p">(</span><span class="n">events</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">data</span><span class="p">.</span><span class="n">fd</span> <span class="o">==</span> <span class="n">listenfd</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="c1">// 处理 accept 事件
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>      <span class="n">connfd</span> <span class="o">=</span> <span class="n">accept</span><span class="p">(</span><span class="n">listenfd</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">      <span class="c1">// 新连接放入 epoll
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>      <span class="n">epoll_ctl</span><span class="p">(</span><span class="n">epfd</span><span class="p">,</span> <span class="n">EPOLL_CTL_ADD</span><span class="p">,</span> <span class="n">connfd</span><span class="p">,</span><span class="o">&amp;</span><span class="n">ev</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">events</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">events</span><span class="o">&amp;</span><span class="n">EPOLLIN</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="c1">// 处理 read 事件
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>      <span class="n">read</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">MAXLINE</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">      <span class="n">handle</span><span class="p">(</span><span class="n">buffer</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span><span class="p">(</span><span class="n">events</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">events</span><span class="o">&amp;</span><span class="n">EPOLLOUT</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="c1">// 处理 write 事件
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>      <span class="n">write</span><span class="p">(</span><span class="n">sockfd</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">n</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">      <span class="n">handle</span><span class="p">(</span><span class="n">buffer</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><h3 id="4-信号驱动-io-模型">4. 信号驱动 IO 模型</h3>
+<p>程序发起一个 IO 操作，会向内核注册一个信号处理函数，然后进程立即返回，当内核数据就绪后(未拷贝到用户空间)会发送一个信号给进程，此时进程就能在信号处理函数中读取数据。</p>
+<h3 id="5-异步-io-模型">5. 异步 IO 模型</h3>
+<p>程序发送一个 IO 操作，OS 立刻返回，内核等待数据报准备好并拷贝到用户空间，再通知进程，进程再处理数据</p>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/io/">IO</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>Licensed under CC BY-NC-SA 4.0</span>
+    </section>
+    </footer>
+
+
+    
+        <link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"integrity="sha384-RZU/ijkSsFbcmivfdRBQDtwuwVqK7GMOw6IMvKyeWL2K5UAlyp6WonmB8m7Jd0Hn"crossorigin="anonymous"
+            ><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.js"integrity="sha384-pK1WpvzWVBQiP0/GjnvRxV4mOb0oxFuyRxJlk6vVw146n3egcN5C925NCP7a7BY8"crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/contrib/auto-render.min.js"integrity="sha384-vZTG03m&#43;2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl"crossorigin="anonymous"
+                defer
+                >
+            </script><script>
+    window.addEventListener("DOMContentLoaded", () => {
+        renderMathInElement(document.querySelector(`.article-content`), {
+            delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "$", right: "$", display: false },
+                { left: "\\(", right: "\\)", display: false },
+                { left: "\\[", right: "\\]", display: true }
+            ]
+        });})
+</script>
+    
+</article>
+
+    
+
+    
+
+<aside class="related-contents--wrapper">
+    <h2 class="section-title">Related contents</h2>
+    <div class="related-contents">
+        <div class="flex article-list--tile">
+            
+                
+<article class="has-image">
+    <a href="/b/netty-%E5%A4%9A%E7%BA%BF%E7%A8%8B--%E5%A4%9A-reactor/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://pic3.zhimg.com/v2-4da008d8b7f55a0c18bef0e87c5c5bb1_r.jpg?source=1940ef5c" loading="lazy" data-key="" data-hash="https://pic3.zhimg.com/v2-4da008d8b7f55a0c18bef0e87c5c5bb1_r.jpg?source=1940ef5c"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Netty - 多线程 &#43; 多 Reactor</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/b/%E9%AB%98%E6%80%A7%E8%83%BD-io-reactor-%E6%A8%A1%E5%BC%8F/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://pica.zhimg.com/v2-614eb69d0186c32de123115b10c3c682_r.jpg?source=1940ef5c" loading="lazy" data-key="" data-hash="https://pica.zhimg.com/v2-614eb69d0186c32de123115b10c3c682_r.jpg?source=1940ef5c"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">高性能 IO - Reactor 模式</h2>
+        </div>
+    </a>
+</article>
+            
+        </div>
+    </div>
+</aside>
+
+     
+    
+        
+    
+
+    <footer class="site-footer">
+    
+    <section class="copyright">
+        <div class="en"></div>
+        <div class="zh_cn"></div>
+        <div>
+            <a href="https://beian.miit.gov.cn/">蜀ICP备2021003636号</a>
+        </div>
+        <div class="cyber-security">
+            <img src="https://img.alicdn.com/tfs/TB1..50QpXXXXX7XpXXXXXXXXXX-40-40.png" alt="" /> 
+            <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51030202000144">川公网安备 51030202000144号</a>
+        </div>
+        <script>
+            document.querySelector(".copyright .en").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} Howie Young, All rights reserved.`
+            document.querySelector(".copyright .zh_cn").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} 杨浩宇，保留所有权利。`
+        </script>
+    </section>
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.11.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    <aside class="sidebar right-sidebar sticky">
+        
+            
+                
+    <section class="widget archives">
+        <div class="widget-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <line x1="5" y1="9" x2="19" y2="9" />
+  <line x1="5" y1="15" x2="19" y2="15" />
+  <line x1="11" y1="4" x2="7" y2="20" />
+  <line x1="17" y1="4" x2="13" y2="20" />
+</svg>
+
+
+
+        </div>
+        <h2 class="widget-title section-title">Table of contents</h2>
+        
+        <div class="widget--toc">
+            <nav id="TableOfContents">
+  <ol>
+    <li>
+      <ol>
+        <li><a href="#1-阻塞-io">1. 阻塞 IO</a>
+          <ol>
+            <li><a href="#单线程">单线程</a></li>
+            <li><a href="#多线程">多线程</a></li>
+          </ol>
+        </li>
+        <li><a href="#2-非阻塞-io-模型">2. 非阻塞 IO 模型</a></li>
+        <li><a href="#3-io-多路复用">3. IO 多路复用</a>
+          <ol>
+            <li><a href="#1-select">1. <code>select</code></a></li>
+            <li><a href="#2-poll">2. <code>poll</code></a></li>
+            <li><a href="#3-epoll">3. <code>epoll</code></a></li>
+          </ol>
+        </li>
+        <li><a href="#4-信号驱动-io-模型">4. 信号驱动 IO 模型</a></li>
+        <li><a href="#5-异步-io-模型">5. 异步 IO 模型</a></li>
+      </ol>
+    </li>
+  </ol>
+</nav>
+        </div>
+    </section>
+
+            
+        
+
+        <section class="copyright">
+            <div class="en"></div>
+            <div class="zh_cn"></div>
+            <div>
+                <a href="https://beian.miit.gov.cn/">蜀ICP备2021003636号</a>
+            </div>
+            <div class="cyber-security">
+                <img src="https://img.alicdn.com/tfs/TB1..50QpXXXXX7XpXXXXXXXXXX-40-40.png" alt="" /> 
+                <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51030202000144">川公网安备 51030202000144号</a>
+            </div>
+            <script>
+                document.querySelector(".sidebar .copyright .en").innerHTML =
+                    `Copyright ©2021-${new Date().getFullYear()} Howie Young, All rights reserved.`
+                document.querySelector(".sidebar .copyright .zh_cn").innerHTML =
+                    `Copyright ©2021-${new Date().getFullYear()} 杨浩宇，保留所有权利。`
+            </script>
+        </section>
+    </aside>
+
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+</script>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Poppins&display=swap");
+   
+   
+   
+   
+   
+  @import url("https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@700&display=swap");
+   
+   
+  @import url('https://fonts.googleapis.com/css2?family=Fira+Code&display=swap');
+</style>
+
+
+
+
+
+
+
+
+
+<script src="https://cdn.jsdelivr.net/gh/zhixuan2333/gh-blog@v0.1.0/js/nprogress.min.js"
+    integrity="sha384-bHDlAEUFxsRI7JfULv3DTpL2IXbbgn4JHQJibgo5iiXSK6Iu8muwqHANhun74Cqg"
+    crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/zhixuan2333/gh-blog@v0.1.0/css/nprogress.css"
+    integrity="sha384-KJyhr2syt5+4M9Pz5dipCvTrtvOmLk/olWVdfhAp858UCa64Ia5GFpTN7+G4BWpE" crossorigin="anonymous" />
+<script>
+    NProgress.start();
+    document.addEventListener("readystatechange", () => {
+        if (document.readyState === "interactive") NProgress.inc(0.8);
+        if (document.readyState === "complete") NProgress.done();
+    });
+</script>
+    </body>
+
+
+</html>

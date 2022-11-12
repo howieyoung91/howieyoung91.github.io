@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content=' CopyOnWriteArrayList  是线程安全的 ArrayList,相比于 Vector , CopyOnWriteArrayList 采用 写时复制 技术实现线程安全,效率更高'><title>CopyOnWriteArrayList 源码阅读</title>
+
+<link rel='canonical' href='https://yanghaoyu.xyz/blogs/jdk/juc/copyonwritearraylist/'>
+
+<link rel="stylesheet" href="/scss/style.min.3945db2248f78ad046039d38b878bb3f1e0db7bc00eb397adc55649b6270be98.css"><meta property='og:title' content='CopyOnWriteArrayList 源码阅读'>
+<meta property='og:description' content=' CopyOnWriteArrayList  是线程安全的 ArrayList,相比于 Vector , CopyOnWriteArrayList 采用 写时复制 技术实现线程安全,效率更高'>
+<meta property='og:url' content='https://yanghaoyu.xyz/blogs/jdk/juc/copyonwritearraylist/'>
+<meta property='og:site_name' content='Howie'>
+<meta property='og:type' content='article'><meta property='article:section' content='Blogs' /><meta property='article:tag' content='JUC' /><meta property='article:tag' content='JDK' /><meta property='article:tag' content='并发' /><meta property='article:published_time' content='2021-07-31T00:00:00&#43;00:00'/><meta property='article:modified_time' content='2021-07-31T00:00:00&#43;00:00'/><meta property='og:image' content='https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/copyonwritearraylist.png' />
+<meta name="twitter:title" content="CopyOnWriteArrayList 源码阅读">
+<meta name="twitter:description" content=" CopyOnWriteArrayList  是线程安全的 ArrayList,相比于 Vector , CopyOnWriteArrayList 采用 写时复制 技术实现线程安全,效率更高"><meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content='https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/copyonwritearraylist.png' />
+    <link rel="shortcut icon" href="/img/favicon.ico" />
+
+    </head>
+    <body class="
+    article-page
+    ">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex on-phone--column extended"><aside class="sidebar left-sidebar sticky ">
+    <button class="hamburger hamburger--spin" type="button" id="toggle-menu" aria-label="切换菜单">
+        <span class="hamburger-box">
+            <span class="hamburger-inner"></span>
+        </span>
+    </button>
+
+    <header>
+        
+            
+            <figure class="site-avatar">
+                <a href="/">
+                
+                    
+                    
+                    
+                        
+                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                            height="300" class="site-logo" loading="lazy" alt="Avatar">
+                    
+                
+                </a>
+                
+            </figure>
+            
+        
+        
+        <div class="site-meta">
+            <h1 class="site-name"><a href="/">Howie</a></h1>
+            <h2 class="site-description">Refactor World</h2>
+        </div>
+    </header><ol class="menu" id="main-menu">
+        
+        
+        
+
+        <li >
+            <a href='/tags/%E6%89%8B%E5%86%99spring' >
+                
+                
+                
+                <span>手写Spring</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/tags/jdk' >
+                
+                
+                
+                <span>JDK</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/tags/jvm' >
+                
+                
+                
+                <span>JVM</span>
+            </a>
+        </li>
+        
+
+        <div class="menu-bottom-section">
+            
+            
+                <li id="dark-mode-toggle">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="8" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-right" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="16" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <span>暗色模式</span>
+                </li>
+            
+        </div>
+    </ol>
+</aside>
+<main class="main full-width">
+    <article class="has-image main-article">
+    <header class="article-header">
+        <div class="article-image">
+            <a href="/blogs/jdk/juc/copyonwritearraylist/">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/copyonwritearraylist.png" loading="lazy" alt="Featured image of post CopyOnWriteArrayList 源码阅读" />
+                
+            </a>
+        </div>
+    
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/java/" >
+                Java
+            </a>
+        
+    </header>
+    
+
+    <div class="article-title-wrapper">
+        <h2 class="article-title">
+            <a href="/blogs/jdk/juc/copyonwritearraylist/">CopyOnWriteArrayList 源码阅读</a>
+        </h2>
+    
+        
+        <h3 class="article-subtitle">
+             CopyOnWriteArrayList  是线程安全的 ArrayList,相比于 Vector , CopyOnWriteArrayList 采用 写时复制 技术实现线程安全,效率更高
+        </h3>
+        
+    </div>
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Jul 31, 2021</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    阅读时长: 2 分钟
+                </time>
+            </div>
+        
+    </footer>
+    
+
+    
+</div>
+</header>
+
+    <section class="article-content">
+    
+    
+    <p><img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/copyonwritearraylist.png"
+	
+	
+	
+	loading="lazy"
+	
+		alt="CopyOnWriteArrayList.png"
+	
+	
+></p>
+<!-- more -->
+<p><code>CopyOnWriteArrayList</code>实现了<code>List</code>接口,允许随机访问</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">CopyOnWriteArrayList</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;</span>
+    <span class="kd">implements</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;,</span> <span class="n">RandomAccess</span><span class="o">,</span> <span class="n">Cloneable</span><span class="o">,</span> <span class="n">java</span><span class="o">.</span><span class="na">io</span><span class="o">.</span><span class="na">Serializable</span>
+</code></pre></div><h1 id="基本属性">基本属性</h1>
+<ol>
+<li><code>lock</code> 一把锁,用于实现<code>写-写互斥</code></li>
+<li><code>array</code> 存放数据的数组</li>
+</ol>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java">    <span class="cm">/**
+</span><span class="cm">     * The lock protecting all mutators.  (We have a mild preference
+</span><span class="cm">     * for builtin monitors over ReentrantLock when either will do.)
+</span><span class="cm">     */</span>
+    <span class="kd">final</span> <span class="kd">transient</span> <span class="n">Object</span> <span class="n">lock</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Object</span><span class="o">();</span>
+
+    <span class="cm">/** The array, accessed only via getArray/setArray. */</span>
+    <span class="kd">private</span> <span class="kd">transient</span> <span class="kd">volatile</span> <span class="n">Object</span><span class="o">[]</span> <span class="n">array</span><span class="o">;</span>
+</code></pre></div><h1 id="构造器">构造器</h1>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="nf">CopyOnWriteArrayList</span><span class="o">()</span> <span class="o">{</span>
+    <span class="n">setArray</span><span class="o">(</span><span class="k">new</span> <span class="n">Object</span><span class="o">[</span><span class="n">0</span><span class="o">]);</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="nf">CopyOnWriteArrayList</span><span class="o">(</span><span class="n">Collection</span><span class="o">&lt;?</span> <span class="kd">extends</span> <span class="n">E</span><span class="o">&gt;</span> <span class="n">c</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">Object</span><span class="o">[]</span> <span class="n">es</span><span class="o">;</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">c</span><span class="o">.</span><span class="na">getClass</span><span class="o">()</span> <span class="o">==</span> <span class="n">CopyOnWriteArrayList</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+        <span class="n">es</span> <span class="o">=</span> <span class="o">((</span><span class="n">CopyOnWriteArrayList</span><span class="o">&lt;?&gt;)</span><span class="n">c</span><span class="o">).</span><span class="na">getArray</span><span class="o">();</span>
+    <span class="k">else</span> <span class="o">{</span>
+        <span class="n">es</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="na">toArray</span><span class="o">();</span>
+        <span class="c1">// defend against c.toArray (incorrectly) not returning Object[]
+</span><span class="c1"></span>        <span class="c1">// (see e.g. https://bugs.openjdk.java.net/browse/JDK-6260652)
+</span><span class="c1"></span>        <span class="c1">// 如果不是Object[] 则转换一下
+</span><span class="c1"></span>        <span class="c1">// 这是JDK的设计缺陷 c.toArray不一定返回Object[], 比如 Arrays.asList 返回的是T[]
+</span><span class="c1"></span>        <span class="k">if</span> <span class="o">(</span><span class="n">es</span><span class="o">.</span><span class="na">getClass</span><span class="o">()</span> <span class="o">!=</span> <span class="n">Object</span><span class="o">[].</span><span class="na">class</span><span class="o">)</span>
+            <span class="n">es</span> <span class="o">=</span> <span class="n">Arrays</span><span class="o">.</span><span class="na">copyOf</span><span class="o">(</span><span class="n">es</span><span class="o">,</span> <span class="n">es</span><span class="o">.</span><span class="na">length</span><span class="o">,</span> <span class="n">Object</span><span class="o">[].</span><span class="na">class</span><span class="o">);</span>
+    <span class="o">}</span>
+    <span class="n">setArray</span><span class="o">(</span><span class="n">es</span><span class="o">);</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="nf">CopyOnWriteArrayList</span><span class="o">(</span><span class="n">E</span><span class="o">[]</span> <span class="n">toCopyIn</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// 把数组拷贝一份
+</span><span class="c1"></span>    <span class="n">setArray</span><span class="o">(</span><span class="n">Arrays</span><span class="o">.</span><span class="na">copyOf</span><span class="o">(</span><span class="n">toCopyIn</span><span class="o">,</span> <span class="n">toCopyIn</span><span class="o">.</span><span class="na">length</span><span class="o">,</span> <span class="n">Object</span><span class="o">[].</span><span class="na">class</span><span class="o">));</span>
+<span class="o">}</span>
+
+<span class="kd">final</span> <span class="kt">void</span> <span class="nf">setArray</span><span class="o">(</span><span class="n">Object</span><span class="o">[]</span> <span class="n">a</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">array</span> <span class="o">=</span> <span class="n">a</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></div><h1 id="使用写时复制实现读写分离">使用<code>写时复制</code>实现读写分离</h1>
+<h3 id="1-add">1. <code>add</code></h3>
+<!-- @flowstart
+start=>start: start
+p=>operation: 获取`lock`实现`写-写互斥`
+copy=>operation: 根据 Object 数组复制一个长度为 length+1 的 Object 数组为 newElements
+update=>operation: 在 newElements 上进行写操作
+modify=>operation: 把 array 改为 newElements
+v=>operation: 释放`lock`
+end=>end: end
+start->p->copy->update->modify->v->end
+@flowend -->
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">add</span><span class="o">(</span><span class="n">E</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kd">synchronized</span> <span class="o">(</span><span class="n">lock</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">Object</span><span class="o">[]</span> <span class="n">es</span> <span class="o">=</span> <span class="n">getArray</span><span class="o">();</span>
+        <span class="kt">int</span> <span class="n">len</span> <span class="o">=</span> <span class="n">es</span><span class="o">.</span><span class="na">length</span><span class="o">;</span>
+        <span class="n">es</span> <span class="o">=</span> <span class="n">Arrays</span><span class="o">.</span><span class="na">copyOf</span><span class="o">(</span><span class="n">es</span><span class="o">,</span> <span class="n">len</span> <span class="o">+</span> <span class="n">1</span><span class="o">);</span>
+        <span class="n">es</span><span class="o">[</span><span class="n">len</span><span class="o">]</span> <span class="o">=</span> <span class="n">e</span><span class="o">;</span>
+        <span class="n">setArray</span><span class="o">(</span><span class="n">es</span><span class="o">);</span>
+        <span class="k">return</span> <span class="kc">true</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div><p>可以看到 add 操作会先复制一个数组, 并在该数组上进行操作, 而原来的数组不受影响, 其他线程来进行读操作,不会引发线程安全问题, 当写操作完毕之后, 会把原来的数组指针指向新的数组, 实现了数据的更新。所以保证了<code>数据的最终一致性</code>, 没法保证<code>数组的实时一致性</code>。</p>
+<h3 id="2-迭代器">2. 迭代器</h3>
+<p>在每次或者迭代器时, <code>COWIterator</code> 都会保存原来数组的指针为 snapshot, 然后对 snapshot 进行遍历操作,因为写操作都是在拷贝出来的数组上进行的,所以 snapshot,可以一边遍历一边修改,是线程安全的,同时 <code>COWIterator</code> 是不允许 <code>add</code>,<code>set</code> ,<code>remove</code>这些写操作的。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="kd">static</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">COWIterator</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;</span> <span class="kd">implements</span> <span class="n">ListIterator</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;</span> <span class="o">{</span>
+    <span class="cm">/** Snapshot of the array */</span>
+    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Object</span><span class="o">[]</span> <span class="n">snapshot</span><span class="o">;</span>
+    <span class="cm">/** Index of element to be returned by subsequent call to next.  */</span>
+    <span class="kd">private</span> <span class="kt">int</span> <span class="n">cursor</span><span class="o">;</span>
+
+    <span class="n">COWIterator</span><span class="o">(</span><span class="n">Object</span><span class="o">[]</span> <span class="n">es</span><span class="o">,</span> <span class="kt">int</span> <span class="n">initialCursor</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="n">initialCursor</span><span class="o">;</span>
+        <span class="n">snapshot</span> <span class="o">=</span> <span class="n">es</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">hasNext</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">cursor</span> <span class="o">&lt;</span> <span class="n">snapshot</span><span class="o">.</span><span class="na">length</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">hasPrevious</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">cursor</span> <span class="o">&gt;</span> <span class="n">0</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="nd">@SuppressWarnings</span><span class="o">(</span><span class="s">&#34;unchecked&#34;</span><span class="o">)</span>
+    <span class="kd">public</span> <span class="n">E</span> <span class="nf">next</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(!</span><span class="n">hasNext</span><span class="o">())</span>
+            <span class="k">throw</span> <span class="k">new</span> <span class="n">NoSuchElementException</span><span class="o">();</span>
+        <span class="k">return</span> <span class="o">(</span><span class="n">E</span><span class="o">)</span> <span class="n">snapshot</span><span class="o">[</span><span class="n">cursor</span><span class="o">++];</span>
+    <span class="o">}</span>
+
+    <span class="nd">@SuppressWarnings</span><span class="o">(</span><span class="s">&#34;unchecked&#34;</span><span class="o">)</span>
+    <span class="kd">public</span> <span class="n">E</span> <span class="nf">previous</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(!</span> <span class="n">hasPrevious</span><span class="o">())</span>
+            <span class="k">throw</span> <span class="k">new</span> <span class="n">NoSuchElementException</span><span class="o">();</span>
+        <span class="k">return</span> <span class="o">(</span><span class="n">E</span><span class="o">)</span> <span class="n">snapshot</span><span class="o">[--</span><span class="n">cursor</span><span class="o">];</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">int</span> <span class="nf">nextIndex</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">cursor</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">int</span> <span class="nf">previousIndex</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">cursor</span> <span class="o">-</span> <span class="n">1</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">remove</span><span class="o">()</span> <span class="o">{</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">UnsupportedOperationException</span><span class="o">();</span> <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">set</span><span class="o">(</span><span class="n">E</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">UnsupportedOperationException</span><span class="o">();</span> <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">add</span><span class="o">(</span><span class="n">E</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">UnsupportedOperationException</span><span class="o">();</span> <span class="o">}</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">forEachRemaining</span><span class="o">(</span><span class="n">Consumer</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">E</span><span class="o">&gt;</span> <span class="n">action</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">Objects</span><span class="o">.</span><span class="na">requireNonNull</span><span class="o">(</span><span class="n">action</span><span class="o">);</span>
+        <span class="kd">final</span> <span class="kt">int</span> <span class="n">size</span> <span class="o">=</span> <span class="n">snapshot</span><span class="o">.</span><span class="na">length</span><span class="o">;</span>
+        <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">;</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="n">size</span><span class="o">;</span>
+        <span class="k">for</span> <span class="o">(;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">size</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span>
+            <span class="n">action</span><span class="o">.</span><span class="na">accept</span><span class="o">(</span><span class="n">elementAt</span><span class="o">(</span><span class="n">snapshot</span><span class="o">,</span> <span class="n">i</span><span class="o">));</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div><p><code>CopyOnWriteArrayList</code> 比<code>Vector</code>效率高,但是占用空间大,有可能导致 gc,甚至是 <code>Stop the world</code></p>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/juc/">JUC</a>
+        
+            <a href="/tags/jdk/">JDK</a>
+        
+            <a href="/tags/%E5%B9%B6%E5%8F%91/">并发</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>Licensed under CC BY-NC-SA 4.0</span>
+    </section>
+    </footer>
+
+
+    
+        <link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"integrity="sha384-RZU/ijkSsFbcmivfdRBQDtwuwVqK7GMOw6IMvKyeWL2K5UAlyp6WonmB8m7Jd0Hn"crossorigin="anonymous"
+            ><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.js"integrity="sha384-pK1WpvzWVBQiP0/GjnvRxV4mOb0oxFuyRxJlk6vVw146n3egcN5C925NCP7a7BY8"crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/contrib/auto-render.min.js"integrity="sha384-vZTG03m&#43;2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl"crossorigin="anonymous"
+                defer
+                >
+            </script><script>
+    window.addEventListener("DOMContentLoaded", () => {
+        renderMathInElement(document.querySelector(`.article-content`), {
+            delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "$", right: "$", display: false },
+                { left: "\\(", right: "\\)", display: false },
+                { left: "\\[", right: "\\]", display: true }
+            ]
+        });})
+</script>
+    
+</article>
+
+    
+
+    
+
+<aside class="related-contents--wrapper">
+    <h2 class="section-title">相关文章</h2>
+    <div class="related-contents">
+        <div class="flex article-list--tile">
+            
+                
+<article class="has-image">
+    <a href="/blogs/jdk/juc/condition/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/condition.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/condition.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Condition 源码阅读</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/blogs/jdk/juc/abstractqueuedsynchronizer/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/aqs.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/aqs.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">AbstractQueuedSynchronizer 源码阅读</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="">
+    <a href="/blogs/jdk/juc/atomicinteger/">
+        
+        
+
+        <div class="article-details">
+            <h2 class="article-title">AtomicInteger &amp; CAS 源码阅读</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="">
+    <a href="/blogs/jvm/happen-before/">
+        
+        
+
+        <div class="article-details">
+            <h2 class="article-title">JVM -  happens-before 规则</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/blogs/jvm/synchronized/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/object-monitor.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/object-monitor.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">JVM - synchronized 实现原理</h2>
+        </div>
+    </a>
+</article>
+            
+        </div>
+    </div>
+</aside>
+
+     
+    
+        
+    
+
+    <footer class="site-footer">
+    
+    <section class="copyright">
+        <div class="en"></div>
+        <div class="zh_cn"></div>
+        <div>
+            <a href="https://beian.miit.gov.cn/">蜀ICP备2021003636号</a>
+        </div>
+        <div class="cyber-security">
+            <img src="https://img.alicdn.com/tfs/TB1..50QpXXXXX7XpXXXXXXXXXX-40-40.png" alt="" /> 
+            <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51030202000144">川公网安备 51030202000144号</a>
+        </div>
+        <script>
+            document.querySelector(".copyright .en").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} Howie Young, All rights reserved.`
+            document.querySelector(".copyright .zh_cn").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} 杨浩宇，保留所有权利。`
+        </script>
+    </section>
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        主题 <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.11.0">Stack</a></b> 由 <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a> 设计
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+</script>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Poppins&display=swap");
+   
+   
+   
+   
+   
+  @import url("https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@700&display=swap");
+   
+   
+  @import url('https://fonts.googleapis.com/css2?family=Fira+Code&display=swap');
+</style>
+
+
+
+
+
+
+
+    </body>
+</html>

@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='LinkedHashMap 直接继承自 HashMap, 在 Entry 新增了 before 和 after 两个字段构成双向链表, 用于保存顺序, 那么只需要在增删改查的过程中维护好这个双向链表, 即可保证插入的顺序'><title>LinkedHashMap 源码阅读</title>
+
+<link rel='canonical' href='https://yanghaoyu.xyz/blogs/jdk/collection/linkedhashmap/'>
+
+<link rel="stylesheet" href="/scss/style.min.3945db2248f78ad046039d38b878bb3f1e0db7bc00eb397adc55649b6270be98.css"><meta property='og:title' content='LinkedHashMap 源码阅读'>
+<meta property='og:description' content='LinkedHashMap 直接继承自 HashMap, 在 Entry 新增了 before 和 after 两个字段构成双向链表, 用于保存顺序, 那么只需要在增删改查的过程中维护好这个双向链表, 即可保证插入的顺序'>
+<meta property='og:url' content='https://yanghaoyu.xyz/blogs/jdk/collection/linkedhashmap/'>
+<meta property='og:site_name' content='Howie'>
+<meta property='og:type' content='article'><meta property='article:section' content='Blogs' /><meta property='article:tag' content='数据结构' /><meta property='article:tag' content='JDK' /><meta property='article:published_time' content='2021-08-29T00:00:00&#43;00:00'/><meta property='article:modified_time' content='2021-08-29T00:00:00&#43;00:00'/><meta property='og:image' content='https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/linkedhashmap.png' />
+<meta name="twitter:title" content="LinkedHashMap 源码阅读">
+<meta name="twitter:description" content="LinkedHashMap 直接继承自 HashMap, 在 Entry 新增了 before 和 after 两个字段构成双向链表, 用于保存顺序, 那么只需要在增删改查的过程中维护好这个双向链表, 即可保证插入的顺序"><meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content='https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/linkedhashmap.png' />
+    <link rel="shortcut icon" href="/img/favicon.ico" />
+
+    </head>
+    <body class="
+    article-page
+    ">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex on-phone--column extended"><aside class="sidebar left-sidebar sticky ">
+    <button class="hamburger hamburger--spin" type="button" id="toggle-menu" aria-label="切换菜单">
+        <span class="hamburger-box">
+            <span class="hamburger-inner"></span>
+        </span>
+    </button>
+
+    <header>
+        
+            
+            <figure class="site-avatar">
+                <a href="/">
+                
+                    
+                    
+                    
+                        
+                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                            height="300" class="site-logo" loading="lazy" alt="Avatar">
+                    
+                
+                </a>
+                
+            </figure>
+            
+        
+        
+        <div class="site-meta">
+            <h1 class="site-name"><a href="/">Howie</a></h1>
+            <h2 class="site-description">Refactor World</h2>
+        </div>
+    </header><ol class="menu" id="main-menu">
+        
+        
+        
+
+        <li >
+            <a href='/tags/%E6%89%8B%E5%86%99spring' >
+                
+                
+                
+                <span>手写Spring</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/tags/jdk' >
+                
+                
+                
+                <span>JDK</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/tags/jvm' >
+                
+                
+                
+                <span>JVM</span>
+            </a>
+        </li>
+        
+
+        <div class="menu-bottom-section">
+            
+            
+                <li id="dark-mode-toggle">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="8" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-right" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="16" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <span>暗色模式</span>
+                </li>
+            
+        </div>
+    </ol>
+</aside>
+<main class="main full-width">
+    <article class="has-image main-article">
+    <header class="article-header">
+        <div class="article-image">
+            <a href="/blogs/jdk/collection/linkedhashmap/">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/linkedhashmap.png" loading="lazy" alt="Featured image of post LinkedHashMap 源码阅读" />
+                
+            </a>
+        </div>
+    
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/java/" >
+                Java
+            </a>
+        
+    </header>
+    
+
+    <div class="article-title-wrapper">
+        <h2 class="article-title">
+            <a href="/blogs/jdk/collection/linkedhashmap/">LinkedHashMap 源码阅读</a>
+        </h2>
+    
+        
+        <h3 class="article-subtitle">
+            LinkedHashMap 直接继承自 HashMap, 在 Entry 新增了 before 和 after 两个字段构成双向链表, 用于保存顺序, 那么只需要在增删改查的过程中维护好这个双向链表, 即可保证插入的顺序
+        </h3>
+        
+    </div>
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Aug 29, 2021</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    阅读时长: 3 分钟
+                </time>
+            </div>
+        
+    </footer>
+    
+
+    
+</div>
+</header>
+
+    <section class="article-content">
+    
+    
+    <p><img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/linkedhashmap.png"
+	
+	
+	
+	loading="lazy"
+	
+		alt="LinkedHashMap.png"
+	
+	
+></p>
+<!-- more -->
+<h1 id="hashmapnodekv"><code>HashMap.Node&lt;K,V&gt;</code></h1>
+<p><img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/hashmap-node.png"
+	
+	
+	
+	loading="lazy"
+	
+		alt="node"
+	
+	
+></p>
+<h1 id="linkedhashmapentrykv-extends-hashmapnodekv"><code>LinkedHashMap.Entry&lt;K,V&gt; extends HashMap.Node&lt;K,V&gt;</code></h1>
+<p><img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/linkedhashmap-node.png"
+	
+	
+	
+	loading="lazy"
+	
+		alt="node"
+	
+	
+></p>
+<h1 id="class-treenodekv-extends-linkedhashmapentrykv"><code>class TreeNode&lt;K,V&gt; extends LinkedHashMap.Entry&lt;K,V&gt;</code></h1>
+<!-- TreeNode 直接继承自 LinkedHashMap.Entry 其内部新增了红黑树相关的字段 -->
+<h1 id="新增的属性">新增的属性</h1>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="c1">// afterNodeAccess() 的开启选项
+</span><span class="c1"></span><span class="kd">final</span> <span class="kt">boolean</span> <span class="n">accessOrder</span><span class="o">;</span>
+<span class="c1">// 双向链表的头结点
+</span><span class="c1"></span><span class="kd">transient</span> <span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">head</span><span class="o">;</span>
+<span class="c1">// 双向链表的尾结点
+</span><span class="c1"></span><span class="kd">transient</span> <span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">tail</span><span class="o">;</span>
+</code></pre></div><h1 id="linkedhashmap-是如何维护插入的顺序">LinkedHashMap 是如何维护插入的顺序</h1>
+<h2 id="在构造新节点时增强">在构造新节点时增强</h2>
+<p><code>newNode</code> 和 <code>newTreeNode</code> 会在 putVal 中被调用, 重写这两个方法,把新的结点尾插到链表中, 保证插入顺序</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="n">Node</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="nf">newNode</span><span class="o">(</span><span class="kt">int</span> <span class="n">hash</span><span class="o">,</span> <span class="n">K</span> <span class="n">key</span><span class="o">,</span> <span class="n">V</span> <span class="n">value</span><span class="o">,</span> <span class="n">Node</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">p</span> <span class="o">=</span> <span class="k">new</span> <span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;&gt;(</span><span class="n">hash</span><span class="o">,</span> <span class="n">key</span><span class="o">,</span> <span class="n">value</span><span class="o">,</span> <span class="n">e</span><span class="o">);</span>
+    <span class="c1">// 链接到链表的末尾
+</span><span class="c1"></span>    <span class="n">linkNodeLast</span><span class="o">(</span><span class="n">p</span><span class="o">);</span>
+    <span class="k">return</span> <span class="n">p</span><span class="o">;</span>
+<span class="o">}</span>
+<span class="n">TreeNode</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="nf">newTreeNode</span><span class="o">(</span><span class="kt">int</span> <span class="n">hash</span><span class="o">,</span> <span class="n">K</span> <span class="n">key</span><span class="o">,</span> <span class="n">V</span> <span class="n">value</span><span class="o">,</span> <span class="n">Node</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">next</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">TreeNode</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">p</span> <span class="o">=</span> <span class="k">new</span> <span class="n">TreeNode</span><span class="o">&lt;&gt;(</span><span class="n">hash</span><span class="o">,</span> <span class="n">key</span><span class="o">,</span> <span class="n">value</span><span class="o">,</span> <span class="n">next</span><span class="o">);</span>
+    <span class="c1">// 链接到链表的末尾
+</span><span class="c1"></span>    <span class="n">linkNodeLast</span><span class="o">(</span><span class="n">p</span><span class="o">);</span>
+    <span class="k">return</span> <span class="n">p</span><span class="o">;</span>
+<span class="o">}</span>
+<span class="c1">// 在链表末尾链接一个新节点
+</span><span class="c1"></span><span class="kd">private</span> <span class="kt">void</span> <span class="nf">linkNodeLast</span><span class="o">(</span><span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">p</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">last</span> <span class="o">=</span> <span class="n">tail</span><span class="o">;</span>
+    <span class="n">tail</span> <span class="o">=</span> <span class="n">p</span><span class="o">;</span>
+    <span class="k">if</span><span class="o">(</span><span class="n">last</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">head</span> <span class="o">=</span> <span class="n">p</span><span class="o">;</span>
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        <span class="n">p</span><span class="o">.</span><span class="na">before</span> <span class="o">=</span> <span class="n">last</span><span class="o">;</span>
+        <span class="n">last</span><span class="o">.</span><span class="na">after</span> <span class="o">=</span> <span class="n">p</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div><h2 id="在结点类型变化时增强">在结点类型变化时增强</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="c1">// TreeNode -&gt; Node
+</span><span class="c1"></span><span class="n">Node</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="nf">replacementNode</span><span class="o">(</span><span class="n">Node</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">p</span><span class="o">,</span> <span class="n">Node</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">next</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">src</span> <span class="o">=</span> <span class="o">(</span><span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;)</span> <span class="n">p</span><span class="o">;</span>
+    <span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">dst</span> <span class="o">=</span> <span class="k">new</span> <span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;&gt;(</span><span class="n">src</span><span class="o">.</span><span class="na">hash</span><span class="o">,</span> <span class="n">src</span><span class="o">.</span><span class="na">key</span><span class="o">,</span><span class="n">src</span><span class="o">.</span><span class="na">value</span><span class="o">,</span> <span class="n">next</span><span class="o">);</span>
+    <span class="n">transferLinks</span><span class="o">(</span><span class="n">src</span><span class="o">,</span> <span class="n">dst</span><span class="o">);</span>
+    <span class="k">return</span> <span class="n">dst</span><span class="o">;</span>
+<span class="o">}</span>
+<span class="c1">// Node -&gt; TreeNode
+</span><span class="c1"></span><span class="n">TreeNode</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="nf">replacementTreeNode</span><span class="o">(</span><span class="n">Node</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">p</span><span class="o">,</span> <span class="n">Node</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">next</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">src</span> <span class="o">=</span> <span class="o">(</span><span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;)</span> <span class="n">p</span><span class="o">;</span>
+    <span class="n">TreeNode</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">dst</span> <span class="o">=</span> <span class="k">new</span> <span class="n">TreeNode</span><span class="o">&lt;&gt;(</span><span class="n">src</span><span class="o">.</span><span class="na">hash</span><span class="o">,</span> <span class="n">src</span><span class="o">.</span><span class="na">key</span><span class="o">,</span> <span class="n">src</span><span class="o">.</span><span class="na">value</span><span class="o">,</span> <span class="n">next</span><span class="o">);</span>
+    <span class="n">transferLinks</span><span class="o">(</span><span class="n">src</span><span class="o">,</span> <span class="n">dst</span><span class="o">);</span>
+    <span class="k">return</span> <span class="n">dst</span><span class="o">;</span>
+<span class="o">}</span>
+<span class="c1">// 替换 src ,把 dst 连到链表中
+</span><span class="c1"></span><span class="kd">private</span> <span class="kt">void</span> <span class="nf">transferLinks</span><span class="o">(</span><span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">src</span><span class="o">,</span> <span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span><span class="n">V</span><span class="o">&gt;</span> <span class="n">dst</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">b</span> <span class="o">=</span> <span class="n">dst</span><span class="o">.</span><span class="na">before</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="na">before</span><span class="o">;</span>
+    <span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">a</span> <span class="o">=</span> <span class="n">dst</span><span class="o">.</span><span class="na">after</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="na">after</span><span class="o">;</span>
+
+    <span class="c1">// src 的前趋的 after 指向 dst
+</span><span class="c1"></span>    <span class="k">if</span><span class="o">(</span><span class="n">b</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">head</span> <span class="o">=</span> <span class="n">dst</span><span class="o">;</span>
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        <span class="n">b</span><span class="o">.</span><span class="na">after</span> <span class="o">=</span> <span class="n">dst</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="c1">// src 的后继的 before 指向 dst
+</span><span class="c1"></span>    <span class="k">if</span><span class="o">(</span><span class="n">a</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">tail</span> <span class="o">=</span> <span class="n">dst</span><span class="o">;</span>
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        <span class="n">a</span><span class="o">.</span><span class="na">before</span> <span class="o">=</span> <span class="n">dst</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div><h2 id="实现回调函数">实现回调函数</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="c1">// afterNodeInsertion 会在 HashMap#putVal 中回调
+</span><span class="c1">// 在插入新结点的同时，删除 LinkedHashMap 中最早插入的结点
+</span><span class="c1"></span><span class="kt">void</span> <span class="nf">afterNodeInsertion</span><span class="o">(</span><span class="kt">boolean</span> <span class="n">evict</span><span class="o">)</span> <span class="o">{</span> <span class="c1">// possibly remove eldest
+</span><span class="c1"></span>    <span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">first</span><span class="o">;</span>
+    <span class="c1">// removeEldestEntry 默认返回 false
+</span><span class="c1"></span>  <span class="c1">// ps: 重写该方法可以实现 FIFO 的 Cache
+</span><span class="c1"></span>    <span class="k">if</span><span class="o">(</span><span class="n">evict</span> <span class="o">&amp;&amp;</span> <span class="o">(</span><span class="n">first</span> <span class="o">=</span> <span class="n">head</span><span class="o">)</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">removeEldestEntry</span><span class="o">(</span><span class="n">first</span><span class="o">))</span> <span class="o">{</span>
+        <span class="n">K</span> <span class="n">key</span> <span class="o">=</span> <span class="n">first</span><span class="o">.</span><span class="na">key</span><span class="o">;</span>
+        <span class="n">removeNode</span><span class="o">(</span><span class="n">hash</span><span class="o">(</span><span class="n">key</span><span class="o">),</span> <span class="n">key</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="kc">true</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c1">// afterNodeRemoval 会在 HashMap#removeNode 中回调
+</span><span class="c1">// 结点e从 HashMap 删除之后，也要在双向链表中删除
+</span><span class="c1">// before &lt;-&gt; e(被删除的结点) &lt;-&gt; after
+</span><span class="c1">// 变为
+</span><span class="c1">// before &lt;-&gt; after
+</span><span class="c1"></span><span class="kt">void</span> <span class="nf">afterNodeRemoval</span><span class="o">(</span><span class="n">Node</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span> <span class="c1">// unlink
+</span><span class="c1"></span>    <span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">p</span> <span class="o">=</span> <span class="o">(</span><span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;)</span> <span class="n">e</span><span class="o">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="na">before</span><span class="o">,</span> <span class="n">a</span> <span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="na">after</span><span class="o">;</span>
+    <span class="n">p</span><span class="o">.</span><span class="na">before</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="na">after</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+    <span class="k">if</span><span class="o">(</span><span class="n">b</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">head</span> <span class="o">=</span> <span class="n">a</span><span class="o">;</span>
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        <span class="n">b</span><span class="o">.</span><span class="na">after</span> <span class="o">=</span> <span class="n">a</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="k">if</span><span class="o">(</span><span class="n">a</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">tail</span> <span class="o">=</span> <span class="n">b</span><span class="o">;</span>
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        <span class="n">a</span><span class="o">.</span><span class="na">before</span> <span class="o">=</span> <span class="n">b</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+<span class="c1">// afterNodeAccess 在结点被访问之后回调 (putVal, get...)
+</span><span class="c1">// 在访问e之后，如果结点e不在链表末尾，则会把它移动到末尾
+</span><span class="c1"></span><span class="kt">void</span> <span class="nf">afterNodeAccess</span><span class="o">(</span><span class="n">Node</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span> <span class="c1">// move node to last
+</span><span class="c1"></span>    <span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">last</span><span class="o">;</span>
+    <span class="c1">// 默认关闭，accessOrder负责开启
+</span><span class="c1"></span>    <span class="k">if</span><span class="o">(</span><span class="n">accessOrder</span> <span class="o">&amp;&amp;</span> <span class="o">(</span><span class="n">last</span> <span class="o">=</span> <span class="n">tail</span><span class="o">)</span> <span class="o">!=</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">p</span> <span class="o">=</span> <span class="o">(</span><span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;)</span> <span class="n">e</span><span class="o">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="na">before</span><span class="o">,</span><span class="n">a</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="na">after</span><span class="o">;</span>
+        <span class="n">p</span><span class="o">.</span><span class="na">after</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+        <span class="k">if</span><span class="o">(</span><span class="n">b</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">head</span> <span class="o">=</span> <span class="n">a</span><span class="o">;</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+            <span class="n">b</span><span class="o">.</span><span class="na">after</span> <span class="o">=</span> <span class="n">a</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="k">if</span><span class="o">(</span><span class="n">a</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">a</span><span class="o">.</span><span class="na">before</span> <span class="o">=</span> <span class="n">b</span><span class="o">;</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+            <span class="n">last</span> <span class="o">=</span> <span class="n">b</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="k">if</span><span class="o">(</span><span class="n">last</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">head</span> <span class="o">=</span> <span class="n">p</span><span class="o">;</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+            <span class="n">p</span><span class="o">.</span><span class="na">before</span> <span class="o">=</span> <span class="n">last</span><span class="o">;</span>
+            <span class="n">last</span><span class="o">.</span><span class="na">after</span> <span class="o">=</span> <span class="n">p</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="n">tail</span> <span class="o">=</span> <span class="n">p</span><span class="o">;</span>
+        <span class="c1">// 结构变化 修改次数 +1
+</span><span class="c1"></span>        <span class="o">++</span><span class="n">modCount</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+</code></pre></div><h2 id="其他">其他</h2>
+<h3 id="重置-linkedhashmap">重置 LinkedHashMap</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="kt">void</span> <span class="nf">reinitialize</span><span class="o">()</span> <span class="o">{</span>
+    <span class="cm">/*
+</span><span class="cm">    void HashMap#reinitialize() {
+</span><span class="cm">        table = null;
+</span><span class="cm">        entrySet = null;
+</span><span class="cm">        keySet = null;
+</span><span class="cm">        values = null;
+</span><span class="cm">        modCount = 0;
+</span><span class="cm">        threshold = 0;
+</span><span class="cm">        size = 0;
+</span><span class="cm">    }
+</span><span class="cm">    */</span>
+    <span class="kd">super</span><span class="o">.</span><span class="na">reinitialize</span><span class="o">();</span>
+    <span class="n">head</span> <span class="o">=</span> <span class="n">tail</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+<span class="o">}</span>
+
+</code></pre></div><h3 id="序列化">序列化</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="c1">// 这个方法会在 HashMap#writeObject 中被调用
+</span><span class="c1"></span><span class="kt">void</span> <span class="nf">internalWriteEntries</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">io</span><span class="o">.</span><span class="na">ObjectOutputStream</span> <span class="n">s</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+    <span class="k">for</span><span class="o">(</span><span class="n">LinkedHashMap</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">e</span> <span class="o">=</span> <span class="n">head</span><span class="o">;</span> <span class="n">e</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">;</span> <span class="n">e</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="na">after</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">s</span><span class="o">.</span><span class="na">writeObject</span><span class="o">(</span><span class="n">e</span><span class="o">.</span><span class="na">key</span><span class="o">);</span>
+        <span class="n">s</span><span class="o">.</span><span class="na">writeObject</span><span class="o">(</span><span class="n">e</span><span class="o">.</span><span class="na">value</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div>
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/">数据结构</a>
+        
+            <a href="/tags/jdk/">JDK</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>Licensed under CC BY-NC-SA 4.0</span>
+    </section>
+    </footer>
+
+
+    
+        <link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"integrity="sha384-RZU/ijkSsFbcmivfdRBQDtwuwVqK7GMOw6IMvKyeWL2K5UAlyp6WonmB8m7Jd0Hn"crossorigin="anonymous"
+            ><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.js"integrity="sha384-pK1WpvzWVBQiP0/GjnvRxV4mOb0oxFuyRxJlk6vVw146n3egcN5C925NCP7a7BY8"crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/contrib/auto-render.min.js"integrity="sha384-vZTG03m&#43;2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl"crossorigin="anonymous"
+                defer
+                >
+            </script><script>
+    window.addEventListener("DOMContentLoaded", () => {
+        renderMathInElement(document.querySelector(`.article-content`), {
+            delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "$", right: "$", display: false },
+                { left: "\\(", right: "\\)", display: false },
+                { left: "\\[", right: "\\]", display: true }
+            ]
+        });})
+</script>
+    
+</article>
+
+    
+
+    
+
+<aside class="related-contents--wrapper">
+    <h2 class="section-title">相关文章</h2>
+    <div class="related-contents">
+        <div class="flex article-list--tile">
+            
+                
+<article class="has-image">
+    <a href="/blogs/jdk/collection/treemap/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/treemap.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/treemap.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">TreeMap 源码阅读</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/blogs/jdk/collection/weakhashmap/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/weakhashmap.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/weakhashmap.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">WeakHashMap 源码阅读</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/blogs/jdk/collection/hashset/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/blog-hero-jdk-hashset.webp" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/blog-hero-jdk-hashset.webp"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">HashSet 源码阅读</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/blogs/jdk/collection/hashmap/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/hashmap.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/hashmap.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">HashMap 源码阅读</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/blogs/jdk/collection/priorityqueue/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/heap.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/heap.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">PriorityQueue 源码阅读</h2>
+        </div>
+    </a>
+</article>
+            
+        </div>
+    </div>
+</aside>
+
+     
+    
+        
+    
+
+    <footer class="site-footer">
+    
+    <section class="copyright">
+        <div class="en"></div>
+        <div class="zh_cn"></div>
+        <div>
+            <a href="https://beian.miit.gov.cn/">蜀ICP备2021003636号</a>
+        </div>
+        <div class="cyber-security">
+            <img src="https://img.alicdn.com/tfs/TB1..50QpXXXXX7XpXXXXXXXXXX-40-40.png" alt="" /> 
+            <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51030202000144">川公网安备 51030202000144号</a>
+        </div>
+        <script>
+            document.querySelector(".copyright .en").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} Howie Young, All rights reserved.`
+            document.querySelector(".copyright .zh_cn").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} 杨浩宇，保留所有权利。`
+        </script>
+    </section>
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        主题 <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.11.0">Stack</a></b> 由 <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a> 设计
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+</script>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Poppins&display=swap");
+   
+   
+   
+   
+   
+  @import url("https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@700&display=swap");
+   
+   
+  @import url('https://fonts.googleapis.com/css2?family=Fira+Code&display=swap');
+</style>
+
+
+
+
+
+
+
+    </body>
+</html>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <title>Redis on Howie</title>
+        <link>https://yanghaoyu.xyz/tags/redis/</link>
+        <description>Recent content in Redis on Howie</description>
+        <generator>Hugo -- gohugo.io</generator>
+        <language>en-us</language>
+        <lastBuildDate>Wed, 02 Mar 2022 00:00:00 +0000</lastBuildDate><atom:link href="https://yanghaoyu.xyz/tags/redis/index.xml" rel="self" type="application/rss+xml" /><item>
+        <title>Redis - Simple Dynamic String</title>
+        <link>https://yanghaoyu.xyz/b/redis-simple-dynamic-string/</link>
+        <pubDate>Wed, 02 Mar 2022 00:00:00 +0000</pubDate>
+        
+        <guid>https://yanghaoyu.xyz/b/redis-simple-dynamic-string/</guid>
+        <description>&lt;img src="https://res.weread.qq.com/wrepub/epub_622000_18" alt="Featured image of post Redis - Simple Dynamic String" /&gt;&lt;!-- `sds (SimpleDynamicString)` 简单动态字符串, 是 redis 对 `C 原生字符串`的封装. `sds` 和 `C 原生字符串`一样使用 `\0` 作为字符串结尾, 这就允许了 sds 可以重用一部分字符串库的函数, 但是 sds 并不用 `\0` 作为字符串结束的判断标准, 而是采用 sds 的 `len`来进行判断, 因此 sds 是二进制安全的 --&gt;
+&lt;h2 id=&#34;sds-struct&#34;&gt;sds struct&lt;/h2&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-c&#34; data-lang=&#34;c&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;k&#34;&gt;struct&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;sdshdr&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;c1&#34;&gt;// 记录字符串的长度
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;kt&#34;&gt;int&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;len&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;c1&#34;&gt;// 记录未使用的字节数量
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;kt&#34;&gt;int&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;free&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;c1&#34;&gt;// 一个柔性数组, 用于保存字符串, 字符串中没有数据的时候不会占用空间 (C99特性)
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;c1&#34;&gt;&lt;/span&gt;    &lt;span class=&#34;kt&#34;&gt;char&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;[]&lt;/span&gt; &lt;span class=&#34;n&#34;&gt;buffer&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;int len&lt;/th&gt;
+&lt;th&gt;int free&lt;/th&gt;
+&lt;th&gt;char[] buffer&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;/table&gt;
+&lt;!-- more --&gt;
+&lt;h2 id=&#34;内存重分配&#34;&gt;内存重分配&lt;/h2&gt;
+&lt;p&gt;在 sds 进行扩展时, redis 会对其进行预分配, 防止多次系统调用陷入内核, 具体规则如下:&lt;/p&gt;
+&lt;p&gt;在修改之后, 如果 sds 的长度小于 1MB, 那么额外分配和 len 一样大的空间
+比如分配之后 &lt;code&gt;len == 20&lt;/code&gt;, 那么 redis 会额外分配 20byte 空间,那么 buffer 总共占 20 + 20 + 1 = 41byte&lt;/p&gt;
+&lt;p&gt;如果长度大于 1MB, 那么只会额外分配 1MB
+比如 分配完毕之后是 2MB, 那么将会多分配 1MB, 因此 buffer 总共占 2MB + 1MB + 1byte&lt;/p&gt;
+&lt;h2 id=&#34;惰性空间释放&#34;&gt;惰性空间释放&lt;/h2&gt;
+&lt;p&gt;在 sds 变短时, 原来的空间也并不会被释放, 而是会把多的空间大小保存到 &lt;code&gt;free&lt;/code&gt; 属性中, 以便后续使用, 这样也减少了空间多次分配, 减少了系统调用&lt;/p&gt;
+&lt;p&gt;总结一下, sds 有以下优点:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;o(1) 获取字符串&lt;/li&gt;
+&lt;li&gt;缓冲区不溢出&lt;/li&gt;
+&lt;li&gt;内存分配次数大大降低&lt;/li&gt;
+&lt;li&gt;二进制安全, 可以存储任何数据&lt;/li&gt;
+&lt;li&gt;兼容部分 &lt;code&gt;C 原生字符串&lt;/code&gt;&lt;/li&gt;
+&lt;/ol&gt;
+</description>
+        </item>
+        
+    </channel>
+</rss>

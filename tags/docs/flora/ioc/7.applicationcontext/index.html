@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='ApplicationContext 整合了 BeanFactory 的一系列操作, 给用户提供了简单的接口
+public interface ApplicationContext extends ListableBeanFactory, ResourceLoader, ApplicationEventPublisher { } ApplicationContext通过继承ListableBeanFactory来增强BeanFactory,它内置一个BeanFactory,所有方法全部转发到内部的 BeanFactory,同时实现ResoureceLoader添加加载资源的能力.
+ConfigurationApplicationContext ConfigurationApplicationContext 为 ApplicationContext 添加了更多方法, 最重要的就是refresh,这个方法负责了Resourece的读取,BeanDefinition的读入和增强,Bean的创建, 并且会在容器被创建时调用
+public interface ConfigurableApplicationContext extends ApplicationContext { /** * 刷新容器 */ void refresh() throws BeansException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException; void registerShutdownHook(); void close(); } AbstractApplicationContext AbstractApplicationContext 实现了上面的三个方法,其中refresh是最重要的
+这里的处理逻辑和Spring有点细微差别,但是总体是差不多的,都是在进行容器的创建,BeanDefinition的读入,Bean的创建,以及一些组件的初始化 这里用了模板方法模式, 部分方法交给子类实现
+public abstract class AbstractApplicationContext extends DefaultResourceLoader implements ConfigurableApplicationContext { public static final String APPLICATION_EVENT_MULTICASTER_BEAN_NAME = &amp;#34;applicationEventMulticaster&amp;#34;; private static final Logger LOGGER = LoggerFactory.'><title>ApplicationContext</title>
+
+<link rel='canonical' href='https://yanghaoyu.xyz/tags/docs/flora/ioc/7.applicationcontext/'>
+
+<link rel="stylesheet" href="/scss/style.min.be7bdd4e56c8a6c3c4d30c70154e7694c74256238402d9fd178f53754c079396.css"><meta property='og:title' content='ApplicationContext'>
+<meta property='og:description' content='ApplicationContext 整合了 BeanFactory 的一系列操作, 给用户提供了简单的接口
+public interface ApplicationContext extends ListableBeanFactory, ResourceLoader, ApplicationEventPublisher { } ApplicationContext通过继承ListableBeanFactory来增强BeanFactory,它内置一个BeanFactory,所有方法全部转发到内部的 BeanFactory,同时实现ResoureceLoader添加加载资源的能力.
+ConfigurationApplicationContext ConfigurationApplicationContext 为 ApplicationContext 添加了更多方法, 最重要的就是refresh,这个方法负责了Resourece的读取,BeanDefinition的读入和增强,Bean的创建, 并且会在容器被创建时调用
+public interface ConfigurableApplicationContext extends ApplicationContext { /** * 刷新容器 */ void refresh() throws BeansException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException; void registerShutdownHook(); void close(); } AbstractApplicationContext AbstractApplicationContext 实现了上面的三个方法,其中refresh是最重要的
+这里的处理逻辑和Spring有点细微差别,但是总体是差不多的,都是在进行容器的创建,BeanDefinition的读入,Bean的创建,以及一些组件的初始化 这里用了模板方法模式, 部分方法交给子类实现
+public abstract class AbstractApplicationContext extends DefaultResourceLoader implements ConfigurableApplicationContext { public static final String APPLICATION_EVENT_MULTICASTER_BEAN_NAME = &amp;#34;applicationEventMulticaster&amp;#34;; private static final Logger LOGGER = LoggerFactory.'>
+<meta property='og:url' content='https://yanghaoyu.xyz/tags/docs/flora/ioc/7.applicationcontext/'>
+<meta property='og:site_name' content='Howie'>
+<meta property='og:type' content='article'><meta property='article:section' content='Tags' /><meta property='article:tag' content='手写spring' /><meta property='article:published_time' content='2022-02-02T00:00:00&#43;00:00'/><meta property='article:modified_time' content='2022-02-02T00:00:00&#43;00:00'/>
+<meta name="twitter:title" content="ApplicationContext">
+<meta name="twitter:description" content="ApplicationContext 整合了 BeanFactory 的一系列操作, 给用户提供了简单的接口
+public interface ApplicationContext extends ListableBeanFactory, ResourceLoader, ApplicationEventPublisher { } ApplicationContext通过继承ListableBeanFactory来增强BeanFactory,它内置一个BeanFactory,所有方法全部转发到内部的 BeanFactory,同时实现ResoureceLoader添加加载资源的能力.
+ConfigurationApplicationContext ConfigurationApplicationContext 为 ApplicationContext 添加了更多方法, 最重要的就是refresh,这个方法负责了Resourece的读取,BeanDefinition的读入和增强,Bean的创建, 并且会在容器被创建时调用
+public interface ConfigurableApplicationContext extends ApplicationContext { /** * 刷新容器 */ void refresh() throws BeansException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException; void registerShutdownHook(); void close(); } AbstractApplicationContext AbstractApplicationContext 实现了上面的三个方法,其中refresh是最重要的
+这里的处理逻辑和Spring有点细微差别,但是总体是差不多的,都是在进行容器的创建,BeanDefinition的读入,Bean的创建,以及一些组件的初始化 这里用了模板方法模式, 部分方法交给子类实现
+public abstract class AbstractApplicationContext extends DefaultResourceLoader implements ConfigurableApplicationContext { public static final String APPLICATION_EVENT_MULTICASTER_BEAN_NAME = &amp;#34;applicationEventMulticaster&amp;#34;; private static final Logger LOGGER = LoggerFactory.">
+    <link rel="shortcut icon" href="/img/favicon.ico" />
+
+  
+    </head>
+    <body class="
+    article-page
+    ">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex on-phone--column extended"><aside class="sidebar left-sidebar sticky ">
+    <button class="hamburger hamburger--spin" type="button" id="toggle-menu" aria-label="Toggle Menu">
+        <span class="hamburger-box">
+            <span class="hamburger-inner"></span>
+        </span>
+    </button>
+
+    <header>
+        
+            
+            <figure class="site-avatar">
+                <a href="/">
+                
+                    
+                    
+                    
+                        
+                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                            height="300" class="site-logo" loading="lazy" alt="Avatar">
+                    
+                
+                </a>
+                
+                    <span class="emoji">😜</span>
+                
+            </figure>
+            
+        
+        
+        <div class="site-meta">
+            <h1 class="site-name"><a href="/">Howie</a></h1>
+            <h2 class="site-description">Refactor World</h2>
+        </div>
+    </header><ol class="social-menu">
+            
+                <li>
+                    <a 
+                        href='https://github.com/howieyoung91'
+                        target="_blank"
+                        title="GitHub"
+                    >
+                        
+                        
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-brand-github" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+  <path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5" />
+</svg>
+                        
+                    </a>
+                </li>
+            
+                <li>
+                    <a 
+                        href='https://www.instagram.com/howieyoung824/'
+                        target="_blank"
+                        title="Instagram"
+                    >
+                        
+                        
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-brand-instagram" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <rect x="4" y="4" width="16" height="16" rx="4" />
+    <circle cx="12" cy="12" r="3" />
+    <line x1="16.5" y1="7.5" x2="16.5" y2="7.501" />
+  </svg>
+                        
+                    </a>
+                </li>
+            
+                <li>
+                    <a 
+                        href='mailto:ishowieyoung@icloud.com'
+                        target="_blank"
+                        title="Mail"
+                    >
+                        
+                        
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-mail" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <polyline points="3 7 12 13 21 7" />
+  </svg>
+                        
+                    </a>
+                </li>
+            
+        </ol><ol class="menu" id="main-menu">
+        
+        
+        
+
+        <li >
+            <a href='/tags/%E6%89%8B%E5%86%99spring' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-file-text" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+    <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+    <line x1="9" y1="9" x2="10" y2="9" />
+    <line x1="9" y1="13" x2="15" y2="13" />
+    <line x1="9" y1="17" x2="15" y2="17" />
+</svg>
+                
+                <span>Imitate Spring</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/tags/imitate-docker' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-file-text" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+    <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+    <line x1="9" y1="9" x2="10" y2="9" />
+    <line x1="9" y1="13" x2="15" y2="13" />
+    <line x1="9" y1="17" x2="15" y2="17" />
+</svg>
+                
+                <span>Imitate Docker</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/search/' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-search" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="10" cy="10" r="7" />
+  <line x1="21" y1="21" x2="15" y2="15" />
+</svg>
+
+
+
+                
+                <span>Search</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/archives/' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-archive" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <rect x="3" y="4" width="18" height="4" rx="2" />
+  <path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-10" />
+  <line x1="10" y1="12" x2="14" y2="12" />
+</svg>
+
+
+
+                
+                <span>Archives</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/about/' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-user" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="7" r="4" />
+  <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+</svg>
+
+
+
+                
+                <span>About</span>
+            </a>
+        </li>
+        
+
+        <div class="menu-bottom-section">
+            
+            
+                <li id="dark-mode-toggle">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="8" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-right" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="16" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <span>Dark Mode</span>
+                </li>
+            
+        </div>
+    </ol>
+</aside>
+<main class="main full-width">
+    <article class="main-article">
+    <header class="article-header">
+
+    <div class="article-details">
+    
+
+    <div class="article-title-wrapper">
+        <h2 class="article-title">
+            <a href="/tags/docs/flora/ioc/7.applicationcontext/">ApplicationContext</a>
+        </h2>
+    
+        
+    </div>
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Feb 02, 2022</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    5 minute read
+                </time>
+            </div>
+        
+    </footer>
+    
+
+    
+</div>
+</header>
+
+    <section class="article-content">
+    
+    
+    <p><code>ApplicationContext</code> 整合了 <code>BeanFactory</code> 的一系列操作, 给用户提供了简单的接口</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="line"><span class="cl"><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">ApplicationContext</span>
+</span></span><span class="line"><span class="cl">        <span class="kd">extends</span> <span class="n">ListableBeanFactory</span><span class="o">,</span> <span class="n">ResourceLoader</span><span class="o">,</span> <span class="n">ApplicationEventPublisher</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span></code></pre></div><!-- more -->
+<p><img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/ApplicationContext.png"
+	
+	
+	
+	loading="lazy"
+	
+		alt="ApplicationContext"
+	
+	
+></p>
+<p><code>ApplicationContext</code>通过继承<code>ListableBeanFactory</code>来增强<code>BeanFactory</code>,它内置一个<code>BeanFactory</code>,所有方法全部转发到内部的 BeanFactory,同时实现<code>ResoureceLoader</code>添加加载资源的能力.</p>
+<h2 id="configurationapplicationcontext">ConfigurationApplicationContext</h2>
+<p><code>ConfigurationApplicationContext</code> 为 <code>ApplicationContext</code> 添加了更多方法,
+最重要的就是<code>refresh</code>,这个方法负责了<code>Resourece</code>的读取,<code>BeanDefinition</code>的读入和增强,<code>Bean</code>的创建, 并且会在容器被创建时调用</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="line"><span class="cl"><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">ConfigurableApplicationContext</span> <span class="kd">extends</span> <span class="n">ApplicationContext</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    <span class="cm">/**
+</span></span></span><span class="line"><span class="cl"><span class="cm">     * 刷新容器
+</span></span></span><span class="line"><span class="cl"><span class="cm">     */</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">refresh</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">BeansException</span><span class="o">,</span>
+</span></span><span class="line"><span class="cl">                          <span class="n">InvocationTargetException</span><span class="o">,</span>
+</span></span><span class="line"><span class="cl">                          <span class="n">NoSuchMethodException</span><span class="o">,</span>
+</span></span><span class="line"><span class="cl">                          <span class="n">InstantiationException</span><span class="o">,</span>
+</span></span><span class="line"><span class="cl">                          <span class="n">IllegalAccessException</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">registerShutdownHook</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="nf">close</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span></code></pre></div><h2 id="abstractapplicationcontext">AbstractApplicationContext</h2>
+<p><code>AbstractApplicationContext</code> 实现了上面的三个方法,其中<code>refresh</code>是最重要的</p>
+<p>这里的处理逻辑和<code>Spring</code>有点细微差别,但是总体是差不多的,都是在进行容器的创建,<code>BeanDefinition</code>的读入,<code>Bean</code>的创建,以及一些组件的初始化
+这里用了模板方法模式, 部分方法交给子类实现</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="line"><span class="cl"><span class="kd">public</span> <span class="kd">abstract</span> <span class="kd">class</span> <span class="nc">AbstractApplicationContext</span> <span class="kd">extends</span> <span class="n">DefaultResourceLoader</span> <span class="kd">implements</span> <span class="n">ConfigurableApplicationContext</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">String</span> <span class="n">APPLICATION_EVENT_MULTICASTER_BEAN_NAME</span> <span class="o">=</span> <span class="s">&#34;applicationEventMulticaster&#34;</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">Logger</span> <span class="n">LOGGER</span> <span class="o">=</span> <span class="n">LoggerFactory</span><span class="o">.</span><span class="na">getLogger</span><span class="o">(</span><span class="n">AbstractApplicationContext</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">private</span> <span class="n">ApplicationEventMulticaster</span> <span class="n">applicationEventMulticaster</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">String</span> <span class="n">BANNER</span> <span class="o">=</span>
+</span></span><span class="line"><span class="cl">            <span class="s">&#34;\n&#34;</span> <span class="o">+</span>
+</span></span><span class="line"><span class="cl">            <span class="s">&#34; _______  __        ______   .______          ___      \n&#34;</span> <span class="o">+</span>
+</span></span><span class="line"><span class="cl">            <span class="s">&#34;|   ____||  |      /  __  \\  |   _  \\        /   \\     \n&#34;</span> <span class="o">+</span>
+</span></span><span class="line"><span class="cl">            <span class="s">&#34;|  |__   |  |     |  |  |  | |  |_)  |      /  ^  \\    \n&#34;</span> <span class="o">+</span>
+</span></span><span class="line"><span class="cl">            <span class="s">&#34;|   __|  |  |     |  |  |  | |      /      /  /_\\  \\   \n&#34;</span> <span class="o">+</span>
+</span></span><span class="line"><span class="cl">            <span class="s">&#34;|  |     |  `----.|  `--&#39;  | |  |\\  \\----./  _____  \\  \n&#34;</span> <span class="o">+</span>
+</span></span><span class="line"><span class="cl">            <span class="s">&#34;|__|     |_______| \\______/  | _| `._____/__/     \\__\\ \n&#34;</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nd">@Override</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">refresh</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">BeansException</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// 0. 打印 Banner
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="n">printBanner</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="n">createBeanFactoryAndLoadBeanDefinition</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="n">initBeanFactory</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kd">protected</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">createBeanFactoryAndLoadBeanDefinition</span><span class="o">()</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// 1. 创建 BeanFactory， 并加载 BeanDefinition
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="n">refreshBeanFactory</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="c1">// 处理 @Configuration
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="n">additionallyLoadBeanDefinition</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kd">protected</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">initBeanFactory</span><span class="o">()</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// 3. 初始化 ApplicationContextAwareProcessor 为框架提供对象感知功能
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="n">initApplicationContextAwareProcessor</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="c1">// 5. 生成并注册 BeanPostProcessor  要在 Bean 实例化之前执行注册操作,
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="n">registerBeanPostProcessors</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="c1">// 4. 在 Bean 实例化之前，执行 BeanFactoryPostProcessor
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="n">invokeBeanFactoryPostProcessors</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="c1">// 6. 初始化与事件相关的组件
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="n">initApplicationEvent</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="c1">// 7. 提前实例化单例Bean对象
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="c1">// beanFactory.preInstantiateSingletons();
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="n">finishBeanFactoryInitialization</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="c1">// 8. 发布容器刷新完成事件
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="n">finishRefresh</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kd">protected</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">printBanner</span><span class="o">()</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">AbstractApplicationContext</span><span class="o">.</span><span class="na">BANNER</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kd">protected</span> <span class="kd">abstract</span> <span class="kt">void</span> <span class="nf">refreshBeanFactory</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">BeansException</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kd">protected</span> <span class="kd">abstract</span> <span class="n">ConfigurableListableBeanFactory</span> <span class="nf">getBeanFactory</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// 设置类型转换器、提前实例化单例Bean对象
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">finishBeanFactoryInitialization</span><span class="o">()</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">LOGGER</span><span class="o">.</span><span class="na">trace</span><span class="o">(</span><span class="s">&#34;init [ConvertService]...&#34;</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="n">ConfigurableListableBeanFactory</span> <span class="n">beanFactory</span> <span class="o">=</span> <span class="n">getBeanFactory</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">//  默认开启类型转换器
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="k">if</span> <span class="o">(</span><span class="n">beanFactory</span><span class="o">.</span><span class="na">containsBean</span><span class="o">(</span><span class="n">BuiltInBean</span><span class="o">.</span><span class="na">CONVERTER_FACTORY_BEAN</span><span class="o">.</span><span class="na">getName</span><span class="o">()))</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">            <span class="n">DefaultConversionService</span> <span class="n">conversionService</span> <span class="o">=</span> <span class="n">beanFactory</span><span class="o">.</span><span class="na">getBean</span><span class="o">(</span>
+</span></span><span class="line"><span class="cl">                    <span class="n">BuiltInBean</span><span class="o">.</span><span class="na">CONVERTER_FACTORY_BEAN</span><span class="o">.</span><span class="na">getName</span><span class="o">(),</span>
+</span></span><span class="line"><span class="cl">                    <span class="n">DefaultConversionService</span><span class="o">.</span><span class="na">class</span>
+</span></span><span class="line"><span class="cl">            <span class="o">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="o">(</span><span class="n">conversionService</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">                <span class="n">beanFactory</span><span class="o">.</span><span class="na">setConversionService</span><span class="o">(</span><span class="n">conversionService</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">            <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">            <span class="c1">// HashSet&lt;Object&gt; set = new HashSet&lt;&gt;();
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>            <span class="n">String</span><span class="o">[]</span> <span class="n">beanDefinitionNames</span> <span class="o">=</span> <span class="n">beanFactory</span><span class="o">.</span><span class="na">getBeanDefinitionNames</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">            <span class="k">for</span> <span class="o">(</span><span class="n">String</span> <span class="n">beanDefinitionName</span> <span class="o">:</span> <span class="n">beanDefinitionNames</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">                <span class="n">Class</span> <span class="n">beanClass</span> <span class="o">=</span> <span class="n">beanFactory</span><span class="o">.</span><span class="na">getBeanDefinition</span><span class="o">(</span><span class="n">beanDefinitionName</span><span class="o">).</span><span class="na">getBeanClass</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">                <span class="n">Class</span><span class="o">&lt;?&gt;[]</span> <span class="n">interfaces</span> <span class="o">=</span> <span class="n">beanClass</span><span class="o">.</span><span class="na">getInterfaces</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">                <span class="k">for</span> <span class="o">(</span><span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">anInterface</span> <span class="o">:</span> <span class="n">interfaces</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">                    <span class="k">if</span> <span class="o">(</span><span class="n">anInterface</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">Converter</span><span class="o">.</span><span class="na">class</span><span class="o">))</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">                        <span class="n">Converter</span> <span class="n">bean</span> <span class="o">=</span> <span class="o">(</span><span class="n">Converter</span><span class="o">)</span> <span class="n">beanFactory</span><span class="o">.</span><span class="na">getBean</span><span class="o">(</span><span class="n">beanDefinitionName</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">                        <span class="n">conversionService</span><span class="o">.</span><span class="na">addConverter</span><span class="o">(</span><span class="n">bean</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">                    <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">anInterface</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">ConverterFactory</span><span class="o">.</span><span class="na">class</span><span class="o">))</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">                        <span class="n">Object</span> <span class="n">bean</span> <span class="o">=</span> <span class="n">beanFactory</span><span class="o">.</span><span class="na">getBean</span><span class="o">(</span><span class="n">beanDefinitionName</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">                        <span class="n">conversionService</span><span class="o">.</span><span class="na">addConverterFactory</span><span class="o">((</span><span class="n">ConverterFactory</span><span class="o">)</span> <span class="n">bean</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">                    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">                <span class="o">}</span>
+</span></span><span class="line"><span class="cl">            <span class="o">}</span>
+</span></span><span class="line"><span class="cl">        <span class="o">}</span>
+</span></span><span class="line"><span class="cl">        <span class="n">LOGGER</span><span class="o">.</span><span class="na">trace</span><span class="o">(</span><span class="s">&#34;preInstantiate [Singleton Bean]...&#34;</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="c1">// 提前实例化单例 Bean 对象
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="n">beanFactory</span><span class="o">.</span><span class="na">preInstantiateSingletons</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">initApplicationContextAwareProcessor</span><span class="o">()</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// 由于 BeanFactory 无法感知 ApplicationContext,
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="c1">// 因此使用 ApplicationContextAwareProcessor 对 bean 进行增强
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="c1">// 在 执行 BeanPostProcessorBeforeInit 时 将会判断 是否实现 ApplicationContextAware
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="c1">// 如果实现,将会把 Context 注入
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="n">LOGGER</span><span class="o">.</span><span class="na">trace</span><span class="o">(</span><span class="s">&#34;init [BeanAware] ...&#34;</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="n">ApplicationContextAwareProcessor</span> <span class="n">acp</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ApplicationContextAwareProcessor</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="n">getBeanFactory</span><span class="o">().</span><span class="na">addBeanPostProcessor</span><span class="o">(</span><span class="n">acp</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="cm">/**
+</span></span></span><span class="line"><span class="cl"><span class="cm">     * 初始化与事件相关的组件
+</span></span></span><span class="line"><span class="cl"><span class="cm">     */</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">initApplicationEvent</span><span class="o">()</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">LOGGER</span><span class="o">.</span><span class="na">trace</span><span class="o">(</span><span class="s">&#34;init [ApplicationEvent] ...&#34;</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// 初始化事件广播器 把广播器放到容器中
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="n">initApplicationEventMulticaster</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="c1">//  注册事件监听器 把监听器加入广播器中
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="n">registerListeners</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="cm">/**
+</span></span></span><span class="line"><span class="cl"><span class="cm">     * 初始化事件广播器
+</span></span></span><span class="line"><span class="cl"><span class="cm">     * 把 事件广播器 注册到 bean 容器中
+</span></span></span><span class="line"><span class="cl"><span class="cm">     */</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">initApplicationEventMulticaster</span><span class="o">()</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">LOGGER</span><span class="o">.</span><span class="na">trace</span><span class="o">(</span><span class="s">&#34;register [ApplicationEventMulticaster]&#34;</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="n">ConfigurableListableBeanFactory</span> <span class="n">beanFactory</span> <span class="o">=</span> <span class="n">getBeanFactory</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">        <span class="n">applicationEventMulticaster</span> <span class="o">=</span> <span class="k">new</span> <span class="n">SimpleApplicationEventMulticaster</span><span class="o">(</span><span class="n">beanFactory</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="n">beanFactory</span><span class="o">.</span><span class="na">registerSingleton</span><span class="o">(</span><span class="n">APPLICATION_EVENT_MULTICASTER_BEAN_NAME</span><span class="o">,</span> <span class="n">applicationEventMulticaster</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="cm">/**
+</span></span></span><span class="line"><span class="cl"><span class="cm">     * 把 监听器 注册到 事件广播器 中
+</span></span></span><span class="line"><span class="cl"><span class="cm">     */</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">registerListeners</span><span class="o">()</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">Collection</span><span class="o">&lt;</span><span class="n">ApplicationListener</span><span class="o">&gt;</span> <span class="n">applicationListeners</span> <span class="o">=</span> <span class="n">getBeansOfType</span><span class="o">(</span><span class="n">ApplicationListener</span><span class="o">.</span><span class="na">class</span><span class="o">).</span><span class="na">values</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="o">(</span><span class="n">ApplicationListener</span> <span class="n">listener</span> <span class="o">:</span> <span class="n">applicationListeners</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">            <span class="n">LOGGER</span><span class="o">.</span><span class="na">trace</span><span class="o">(</span><span class="s">&#34;register [ApplicationListener] ...&#34;</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">            <span class="n">applicationEventMulticaster</span><span class="o">.</span><span class="na">addApplicationListener</span><span class="o">(</span><span class="n">listener</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="o">}</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">additionallyLoadBeanDefinition</span><span class="o">()</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">ConfigurableListableBeanFactory</span> <span class="n">beanFactory</span> <span class="o">=</span> <span class="n">getBeanFactory</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">        <span class="n">Collection</span><span class="o">&lt;</span><span class="n">ConfigurationBeanBeanFactoryPostProcessor</span><span class="o">&gt;</span> <span class="n">configBeanFactoryPostProcesses</span> <span class="o">=</span> <span class="n">beanFactory</span><span class="o">.</span><span class="na">getBeansOfType</span><span class="o">(</span><span class="n">ConfigurationBeanBeanFactoryPostProcessor</span><span class="o">.</span><span class="na">class</span><span class="o">).</span><span class="na">values</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="o">(</span><span class="n">ConfigurationBeanBeanFactoryPostProcessor</span> <span class="n">configBeanFactoryPostProcess</span> <span class="o">:</span> <span class="n">configBeanFactoryPostProcesses</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">            <span class="n">configBeanFactoryPostProcess</span><span class="o">.</span><span class="na">postProcessBeanFactory</span><span class="o">(</span><span class="n">beanFactory</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="o">}</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="cm">/**
+</span></span></span><span class="line"><span class="cl"><span class="cm">     * 触发 BeanFactoryPostProcessors
+</span></span></span><span class="line"><span class="cl"><span class="cm">     */</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">invokeBeanFactoryPostProcessors</span><span class="o">()</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">LOGGER</span><span class="o">.</span><span class="na">trace</span><span class="o">(</span><span class="s">&#34;register [BeanFactoryPostProcessor] ...&#34;</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="n">ConfigurableListableBeanFactory</span> <span class="n">beanFactory</span> <span class="o">=</span> <span class="n">getBeanFactory</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// 调用处理器
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">BeanFactoryPostProcessor</span><span class="o">&gt;</span> <span class="n">beanFactoryPostProcessorMap</span> <span class="o">=</span> <span class="n">beanFactory</span><span class="o">.</span><span class="na">getBeansOfType</span><span class="o">(</span><span class="n">BeanFactoryPostProcessor</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="n">BeanFactoryPostProcessor</span> <span class="n">proxyBeanFactoryPostProcessor</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="o">(</span><span class="n">BeanFactoryPostProcessor</span> <span class="n">beanFactoryPostProcessor</span> <span class="o">:</span> <span class="n">beanFactoryPostProcessorMap</span><span class="o">.</span><span class="na">values</span><span class="o">())</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">            <span class="c1">// 支持 aop 的 处理 最后再调用 防止 aop 丢失
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>            <span class="k">if</span> <span class="o">(</span><span class="n">beanFactoryPostProcessor</span> <span class="k">instanceof</span> <span class="n">AnnotationAwareAspectJAutoProxySupportBeanFactoryPostProcessor</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">                <span class="n">proxyBeanFactoryPostProcessor</span> <span class="o">=</span> <span class="n">beanFactoryPostProcessor</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">                <span class="k">continue</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">            <span class="o">}</span>
+</span></span><span class="line"><span class="cl">            <span class="c1">// 跳过 @Configuration 的处理器 已经调用过了
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>            <span class="k">if</span> <span class="o">(</span><span class="n">beanFactoryPostProcessor</span> <span class="k">instanceof</span> <span class="n">ConfigurationBeanBeanFactoryPostProcessor</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">                <span class="k">continue</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">            <span class="o">}</span>
+</span></span><span class="line"><span class="cl">            <span class="n">beanFactoryPostProcessor</span><span class="o">.</span><span class="na">postProcessBeanFactory</span><span class="o">(</span><span class="n">beanFactory</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="o">(</span><span class="n">proxyBeanFactoryPostProcessor</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">            <span class="c1">// 先 BeanFactoryPostProcessor 获取到 enhance 信息
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>            <span class="n">proxyBeanFactoryPostProcessor</span><span class="o">.</span><span class="na">postProcessBeanFactory</span><span class="o">(</span><span class="n">beanFactory</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">            <span class="c1">// 添加 对 aop 支持的 bean post processor
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>            <span class="n">Collection</span><span class="o">&lt;</span><span class="n">AnnotationAwareAspectJAutoProxyCreator</span><span class="o">&gt;</span> <span class="n">values</span> <span class="o">=</span> <span class="n">beanFactory</span><span class="o">.</span><span class="na">getBeansOfType</span><span class="o">(</span><span class="n">AnnotationAwareAspectJAutoProxyCreator</span><span class="o">.</span><span class="na">class</span><span class="o">).</span><span class="na">values</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">            <span class="k">for</span> <span class="o">(</span><span class="n">BeanPostProcessor</span> <span class="n">value</span> <span class="o">:</span> <span class="n">values</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">                <span class="n">beanFactory</span><span class="o">.</span><span class="na">addBeanPostProcessor</span><span class="o">(</span><span class="n">value</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">            <span class="o">}</span>
+</span></span><span class="line"><span class="cl">        <span class="o">}</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="cm">/**
+</span></span></span><span class="line"><span class="cl"><span class="cm">     * 把 BeanPostProcessors 添加到 BeanFactory 中
+</span></span></span><span class="line"><span class="cl"><span class="cm">     */</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">registerBeanPostProcessors</span><span class="o">()</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">LOGGER</span><span class="o">.</span><span class="na">trace</span><span class="o">(</span><span class="s">&#34;register [BeanPostProcessor] ...&#34;</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="n">ConfigurableListableBeanFactory</span> <span class="n">beanFactory</span> <span class="o">=</span> <span class="n">getBeanFactory</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">        <span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">BeanPostProcessor</span><span class="o">&gt;</span> <span class="n">beanPostProcessorMap</span> <span class="o">=</span> <span class="n">getBeanFactory</span><span class="o">().</span><span class="na">getBeansOfType</span><span class="o">(</span><span class="n">BeanPostProcessor</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// 从 声明的 bean 中挑选出 BeanPostProcessor 进行注册
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="k">for</span> <span class="o">(</span><span class="n">BeanPostProcessor</span> <span class="n">beanPostProcessor</span> <span class="o">:</span> <span class="n">beanPostProcessorMap</span><span class="o">.</span><span class="na">values</span><span class="o">())</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">            <span class="c1">// 延迟加载
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>            <span class="k">if</span> <span class="o">(</span><span class="n">beanPostProcessor</span> <span class="k">instanceof</span> <span class="n">AnnotationAwareAspectJAutoProxyCreator</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">                <span class="k">continue</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">            <span class="o">}</span>
+</span></span><span class="line"><span class="cl">            <span class="n">beanFactory</span><span class="o">.</span><span class="na">addBeanPostProcessor</span><span class="o">(</span><span class="n">beanPostProcessor</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nd">@Override</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">close</span><span class="o">()</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">getBeanFactory</span><span class="o">().</span><span class="na">destroySingletons</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nd">@Override</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">registerShutdownHook</span><span class="o">()</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">Runtime</span><span class="o">.</span><span class="na">getRuntime</span><span class="o">().</span><span class="na">addShutdownHook</span><span class="o">(</span><span class="k">new</span> <span class="n">Thread</span><span class="o">(</span><span class="k">this</span><span class="o">::</span><span class="n">close</span><span class="o">));</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="cm">/**
+</span></span></span><span class="line"><span class="cl"><span class="cm">     * 发布一个事件
+</span></span></span><span class="line"><span class="cl"><span class="cm">     */</span>
+</span></span><span class="line"><span class="cl">    <span class="nd">@Override</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">publishEvent</span><span class="o">(</span><span class="n">ApplicationEvent</span> <span class="n">event</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">this</span><span class="o">.</span><span class="na">applicationEventMulticaster</span><span class="o">.</span><span class="na">multicastEvent</span><span class="o">(</span><span class="n">event</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nd">@Override</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">public</span> <span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">T</span><span class="o">&gt;</span> <span class="nf">getBeansOfType</span><span class="o">(</span><span class="n">Class</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">type</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">BeansException</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">getBeanFactory</span><span class="o">().</span><span class="na">getBeansOfType</span><span class="o">(</span><span class="n">type</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">finishRefresh</span><span class="o">()</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">publishEvent</span><span class="o">(</span><span class="k">new</span> <span class="n">ContextRefreshedEvent</span><span class="o">(</span><span class="k">this</span><span class="o">));</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nd">@Override</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">public</span> <span class="n">String</span><span class="o">[]</span> <span class="nf">getBeanDefinitionNames</span><span class="o">()</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">getBeanFactory</span><span class="o">().</span><span class="na">getBeanDefinitionNames</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nd">@Override</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">public</span> <span class="n">Object</span> <span class="nf">getBean</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">BeansException</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">getBeanFactory</span><span class="o">().</span><span class="na">getBean</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nd">@Override</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">public</span> <span class="n">Object</span> <span class="nf">getBean</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">Object</span><span class="o">...</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">BeansException</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">getBeanFactory</span><span class="o">().</span><span class="na">getBean</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">args</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nd">@Override</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">public</span> <span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">T</span> <span class="nf">getBean</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">Class</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">requiredType</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">BeansException</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">getBeanFactory</span><span class="o">().</span><span class="na">getBean</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">requiredType</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nd">@Override</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">containsBean</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">getBeanFactory</span><span class="o">().</span><span class="na">containsBean</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nd">@Override</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">containsSingletonBean</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">getBeanFactory</span><span class="o">().</span><span class="na">containsSingletonBean</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span></code></pre></div><h2 id="abstractrefreshableapplicationcontext">AbstractRefreshableApplicationContext</h2>
+<p><code>AbstractRefreshableApplicationContext</code>实现了 <code>refreshBeanFactory</code>,
+它关注 <code>BeanFactory</code> 的创建逻辑, 并且在 <code>createBeanFactory</code> 之后要加载<code>loadBeanDefinitions</code>
+同时, <code>loadBeanDefinitions</code>也是一个模板方法,
+因为 <code>BeanDefinition</code> 可能来自于<code>xml</code>也可以来自于 java 类<code>@Configuration</code>
+这个方法交给子类实现</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="line"><span class="cl"><span class="kd">public</span> <span class="kd">abstract</span> <span class="kd">class</span> <span class="nc">AbstractRefreshableApplicationContext</span> <span class="kd">extends</span> <span class="n">AbstractApplicationContext</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">private</span> <span class="n">DefaultListableBeanFactory</span> <span class="n">beanFactory</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nd">@Override</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">refreshBeanFactory</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">BeansException</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">DefaultListableBeanFactory</span> <span class="n">beanFactory</span> <span class="o">=</span> <span class="n">createBeanFactory</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">        <span class="n">loadBeanDefinitions</span><span class="o">(</span><span class="n">beanFactory</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="k">this</span><span class="o">.</span><span class="na">beanFactory</span> <span class="o">=</span> <span class="n">beanFactory</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kd">private</span> <span class="n">DefaultListableBeanFactory</span> <span class="nf">createBeanFactory</span><span class="o">()</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="k">new</span> <span class="n">DefaultListableBeanFactory</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kd">protected</span> <span class="kd">abstract</span> <span class="kt">void</span> <span class="nf">loadBeanDefinitions</span><span class="o">(</span><span class="n">DefaultListableBeanFactory</span> <span class="n">beanFactory</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nd">@Override</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">protected</span> <span class="n">ConfigurableListableBeanFactory</span> <span class="nf">getBeanFactory</span><span class="o">()</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">beanFactory</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span></code></pre></div><h2 id="abstractrefreshablefileconfigapplicationcontext">AbstractRefreshableFileConfigApplicationContext</h2>
+<p><code>AbstractRefreshableFileConfigApplicationContext</code> 表明通过文件来配置 Bean, 那么必然有一个配置文件的路径, 在这个类实现一下</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="line"><span class="cl"><span class="kd">public</span> <span class="kd">abstract</span> <span class="kd">class</span> <span class="nc">AbstractRefreshableFileConfigApplicationContext</span> <span class="kd">extends</span> <span class="n">AbstractRefreshableApplicationContext</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">private</span> <span class="n">String</span><span class="o">[]</span> <span class="n">configLocations</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setConfigLocations</span><span class="o">(</span><span class="n">String</span><span class="o">...</span> <span class="n">configLocations</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">this</span><span class="o">.</span><span class="na">configLocations</span> <span class="o">=</span> <span class="n">configLocations</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">setConfigLocations</span><span class="o">(</span><span class="n">String</span> <span class="n">configLocations</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">this</span><span class="o">.</span><span class="na">configLocations</span> <span class="o">=</span> <span class="k">new</span> <span class="n">String</span><span class="o">[]{</span><span class="n">configLocations</span><span class="o">};</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kd">protected</span> <span class="n">String</span><span class="o">[]</span> <span class="nf">getConfigLocations</span><span class="o">()</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">configLocations</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span></code></pre></div><h2 id="abstractxmlapplicationcontext">AbstractXmlApplicationContext</h2>
+<p><code>AbstractXmlApplicationContext</code> 表明文件是一个<code>xml</code>,在此实现 <code>loadBeanDefinitions</code></p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="line"><span class="cl"><span class="kd">public</span> <span class="kd">abstract</span> <span class="kd">class</span> <span class="nc">AbstractXmlApplicationContext</span> <span class="kd">extends</span> <span class="n">AbstractRefreshableFileConfigApplicationContext</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">public</span> <span class="nf">AbstractXmlApplicationContext</span><span class="o">(</span><span class="n">String</span> <span class="n">configLocations</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">BeansException</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">setConfigLocations</span><span class="o">(</span><span class="n">configLocations</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kd">public</span> <span class="nf">AbstractXmlApplicationContext</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">configLocations</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">BeansException</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">setConfigLocations</span><span class="o">(</span><span class="n">configLocations</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nd">@Override</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">loadBeanDefinitions</span><span class="o">(</span><span class="n">DefaultListableBeanFactory</span> <span class="n">beanFactory</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">XmlBeanDefinitionReader</span> <span class="n">beanDefinitionReader</span> <span class="o">=</span> <span class="k">new</span> <span class="n">XmlBeanDefinitionReader</span><span class="o">(</span><span class="n">beanFactory</span><span class="o">,</span> <span class="k">this</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="n">String</span><span class="o">[]</span> <span class="n">configLocations</span> <span class="o">=</span> <span class="n">getConfigLocations</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="o">(</span><span class="kc">null</span> <span class="o">!=</span> <span class="n">configLocations</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">            <span class="n">beanDefinitionReader</span><span class="o">.</span><span class="na">loadBeanDefinitions</span><span class="o">(</span><span class="n">configLocations</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="o">}</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span></code></pre></div><h2 id="classpathxmlapplicationcontext">ClassPathXmlApplicationContext</h2>
+<p>实现剩余方法</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="line"><span class="cl"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">ClassPathXmlApplicationContext</span> <span class="kd">extends</span> <span class="n">AbstractXmlApplicationContext</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    <span class="cm">/**
+</span></span></span><span class="line"><span class="cl"><span class="cm">     * 从 XML 中加载 BeanDefinition，并刷新上下文
+</span></span></span><span class="line"><span class="cl"><span class="cm">     */</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">public</span> <span class="nf">ClassPathXmlApplicationContext</span><span class="o">(</span><span class="n">String</span> <span class="n">configLocations</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">BeansException</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">this</span><span class="o">(</span><span class="k">new</span> <span class="n">String</span><span class="o">[]{</span><span class="n">configLocations</span><span class="o">});</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="cm">/**
+</span></span></span><span class="line"><span class="cl"><span class="cm">     * 从 XML 中加载 BeanDefinition，并刷新上下文
+</span></span></span><span class="line"><span class="cl"><span class="cm">     */</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">public</span> <span class="nf">ClassPathXmlApplicationContext</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">configLocations</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">BeansException</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="kd">super</span><span class="o">(</span><span class="n">configLocations</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="n">refresh</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span></code></pre></div>
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/%E6%89%8B%E5%86%99spring/">手写spring</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>Licensed under CC BY-NC-SA 4.0</span>
+    </section>
+    </footer>
+
+
+    
+        <link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"integrity="sha384-RZU/ijkSsFbcmivfdRBQDtwuwVqK7GMOw6IMvKyeWL2K5UAlyp6WonmB8m7Jd0Hn"crossorigin="anonymous"
+            ><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.js"integrity="sha384-pK1WpvzWVBQiP0/GjnvRxV4mOb0oxFuyRxJlk6vVw146n3egcN5C925NCP7a7BY8"crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/contrib/auto-render.min.js"integrity="sha384-vZTG03m&#43;2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl"crossorigin="anonymous"
+                defer
+                >
+            </script><script>
+    window.addEventListener("DOMContentLoaded", () => {
+        renderMathInElement(document.querySelector(`.article-content`), {
+            delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "$", right: "$", display: false },
+                { left: "\\(", right: "\\)", display: false },
+                { left: "\\[", right: "\\]", display: true }
+            ]
+        });})
+</script>
+    
+</article>
+
+    
+
+    
+
+     
+    
+        
+    
+
+    <footer class="site-footer">
+    
+    <section class="copyright">
+        <div class="en"></div>
+        <div class="zh_cn"></div>
+        <div>
+            <a href="https://beian.miit.gov.cn/">蜀ICP备2021003636号</a>
+        </div>
+        <div class="cyber-security">
+            <img src="https://img.alicdn.com/tfs/TB1..50QpXXXXX7XpXXXXXXXXXX-40-40.png" alt="" /> 
+            <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51030202000144">川公网安备 51030202000144号</a>
+        </div>
+        <script>
+            document.querySelector(".copyright .en").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} Howie Young, All rights reserved.`
+            document.querySelector(".copyright .zh_cn").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} 杨浩宇，保留所有权利。`
+        </script>
+    </section>
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.11.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    <aside class="sidebar right-sidebar sticky">
+        
+            
+                
+    <section class="widget archives">
+        <div class="widget-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <line x1="5" y1="9" x2="19" y2="9" />
+  <line x1="5" y1="15" x2="19" y2="15" />
+  <line x1="11" y1="4" x2="7" y2="20" />
+  <line x1="17" y1="4" x2="13" y2="20" />
+</svg>
+
+
+
+        </div>
+        <h2 class="widget-title section-title">Table of contents</h2>
+        
+        <div class="widget--toc">
+            <nav id="TableOfContents">
+  <ol>
+    <li><a href="#configurationapplicationcontext">ConfigurationApplicationContext</a></li>
+    <li><a href="#abstractapplicationcontext">AbstractApplicationContext</a></li>
+    <li><a href="#abstractrefreshableapplicationcontext">AbstractRefreshableApplicationContext</a></li>
+    <li><a href="#abstractrefreshablefileconfigapplicationcontext">AbstractRefreshableFileConfigApplicationContext</a></li>
+    <li><a href="#abstractxmlapplicationcontext">AbstractXmlApplicationContext</a></li>
+    <li><a href="#classpathxmlapplicationcontext">ClassPathXmlApplicationContext</a></li>
+  </ol>
+</nav>
+        </div>
+    </section>
+
+            
+        
+
+        <section class="copyright">
+            <div class="en"></div>
+            <div class="zh_cn"></div>
+            <div>
+                <a href="https://beian.miit.gov.cn/">蜀ICP备2021003636号</a>
+            </div>
+            <div class="cyber-security">
+                <img src="https://img.alicdn.com/tfs/TB1..50QpXXXXX7XpXXXXXXXXXX-40-40.png" alt="" /> 
+                <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51030202000144">川公网安备 51030202000144号</a>
+            </div>
+            <script>
+                document.querySelector(".sidebar .copyright .en").innerHTML =
+                    `Copyright ©2021-${new Date().getFullYear()} Howie Young, All rights reserved.`
+                document.querySelector(".sidebar .copyright .zh_cn").innerHTML =
+                    `Copyright ©2021-${new Date().getFullYear()} 杨浩宇，保留所有权利。`
+            </script>
+        </section>
+    </aside>
+
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+</script>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Poppins&display=swap");
+   
+   
+   
+   
+   
+  @import url("https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@700&display=swap");
+   
+   
+  @import url('https://fonts.googleapis.com/css2?family=Fira+Code&display=swap');
+</style>
+
+
+
+
+
+
+
+
+
+<script src="https://cdn.jsdelivr.net/gh/zhixuan2333/gh-blog@v0.1.0/js/nprogress.min.js"
+    integrity="sha384-bHDlAEUFxsRI7JfULv3DTpL2IXbbgn4JHQJibgo5iiXSK6Iu8muwqHANhun74Cqg"
+    crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/zhixuan2333/gh-blog@v0.1.0/css/nprogress.css"
+    integrity="sha384-KJyhr2syt5+4M9Pz5dipCvTrtvOmLk/olWVdfhAp858UCa64Ia5GFpTN7+G4BWpE" crossorigin="anonymous" />
+<script>
+    NProgress.start();
+    document.addEventListener("readystatechange", () => {
+        if (document.readyState === "interactive") NProgress.inc(0.8);
+        if (document.readyState === "complete") NProgress.done();
+    });
+</script>
+    </body>
+
+
+</html>

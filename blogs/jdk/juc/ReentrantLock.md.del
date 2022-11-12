@@ -1,0 +1,178 @@
+---
+title: ReentrantLock 源码阅读
+date: 2021-09-09
+sidebar: "auto"
+author: Howie Young
+categories:
+  - Java
+tags:
+  - JUC
+  - JDK
+  - 并发
+publish: false
+lastUpdated: 2021/09/09
+image: https://img-blog.csdnimg.cn/img_convert/ef88a82055e5ac04712576fcf857faaf.png
+description: "ReentrantLock  可重入锁, 可以替换 synchronized , 但是 ReentrantLock 提供了比 synchronized 更强大、灵活的锁机制，可以减少死锁发生的概率。 ReentrantLock  只有一个属性  private final Sync sync ,  Sync 是一个内部类,它实现了 AQS , 公平锁 FairSync 和非公平锁 NonfairSync 都实现了 Sync ,  ReentrantLock 的许多功能都是委托给 Sync 的。"
+---
+
+<!-- `ReentrantLock` 可重入锁, 可以替换`synchronized`, 但是 ReentrantLock 提供了比 synchronized 更强大、灵活的锁机制，可以减少死锁发生的概率。`ReentrantLock` 只有一个属性 `private final Sync sync`, `Sync`是一个内部类,它实现了`AQS`, 公平锁`FairSync`和非公平锁`NonfairSync`都实现了`Sync`, `ReentrantLock`的许多功能都是委托给 Sync 的。 -->
+
+<!-- more -->
+
+## `Sync`
+
+这是一个抽象类, 其中`lock`方法交给子类实现
+
+```java
+abstract static class Sync extends AbstractQueuedSynchronizer {
+    private static final long serialVersionUID = -5179523762034025860L;
+
+    // 交给子类实现
+    abstract void lock();
+
+    final boolean nonfairTryAcquire(int acquires) {
+        final Thread current = Thread.currentThread();
+        int c = getState();
+        // 如果锁未被占用 则可以获取到
+        if (c == 0) {
+            if (compareAndSetState(0, acquires)) {
+                setExclusiveOwnerThread(current);
+                return true;
+            }
+        }
+        // 实现可重入
+        else if (current == getExclusiveOwnerThread()) {
+            int nextc = c + acquires;
+            // 防止溢出
+            // 这段代码表明了 可重入的次数是 Integer.MAX_VALUE
+            if (nextc < 0) // overflow
+                throw new Error("Maximum lock count exceeded");
+            setState(nextc);
+            return true;
+        }
+        return false;
+    }
+
+    protected final boolean tryRelease(int releases) {
+        int c = getState() - releases;
+        if (Thread.currentThread() != getExclusiveOwnerThread())
+            throw new IllegalMonitorStateException();
+        boolean free = false;
+        if (c == 0) {
+            free = true;
+            // 重置独占线程
+            setExclusiveOwnerThread(null);
+        }
+        // 更新许可数量
+        setState(c);
+        return free;
+    }
+
+    protected final boolean isHeldExclusively() {
+        // While we must in general read state before owner,
+        // we don't need to do so to check if current thread is owner
+        return getExclusiveOwnerThread() == Thread.currentThread();
+    }
+
+    final ConditionObject newCondition() {
+        return new ConditionObject();
+    }
+
+    // Methods relayed from outer class
+    final Thread getOwner() {
+        return getState() == 0 ? null : getExclusiveOwnerThread();
+    }
+
+    final int getHoldCount() {
+        return isHeldExclusively() ? getState() : 0;
+    }
+
+    final boolean isLocked() {
+        return getState() != 0;
+    }
+
+    private void readObject(java.io.ObjectInputStream s)
+        throws java.io.IOException, ClassNotFoundException {
+        s.defaultReadObject();
+        setState(0); // reset to unlocked state
+    }
+}
+```
+
+## `NonfairSync`
+
+```java
+static final class NonfairSync extends Sync {
+
+    private static final long serialVersionUID = 7316153563782823691L;
+    /**
+     * Performs lock.  Try immediate barge, backing up to normal
+     * acquire on failure.
+     */
+    final void lock() {
+        // 先尝试一次获取许可
+        if (compareAndSetState(0, 1))
+            setExclusiveOwnerThread(Thread.currentThread());
+        else
+            acquire(1);
+    }
+
+    protected final boolean tryAcquire(int acquires) {
+        return nonfairTryAcquire(acquires);
+    }
+}
+```
+
+## `FairSync`
+
+```java
+/**
+ * Sync object for fair locks
+ */
+static final class FairSync extends Sync {
+    private static final long serialVersionUID = -3000897897090466540L;
+
+    final void lock() {
+        acquire(1);
+    }
+
+    protected final boolean tryAcquire(int acquires) {
+        final Thread current = Thread.currentThread();
+        int c = getState();
+        if (c == 0) {
+            // #hasQueuedPredecessors 判断当前线程是否位于队列中的第一个。
+            if (!hasQueuedPredecessors() && compareAndSetState(0, acquires)) {
+                setExclusiveOwnerThread(current);
+                return true;
+            }
+        }
+        // 可重入的实现
+        else if (current == getExclusiveOwnerThread()) {
+            int nextc = c + acquires;
+            if (nextc < 0)
+                throw new Error("Maximum lock count exceeded");
+            setState(nextc);
+            return true;
+        }
+        return false;
+    }
+}
+```
+
+### `hasQueuedPredecessors`
+
+```java
+public final boolean hasQueuedPredecessors() {
+    // The correctness of this depends on head being initialized
+    // before tail and on head.next being accurate if the current
+    // thread is first in queue.
+    Node t = tail; // Read fields in reverse initialization order
+    Node h = head;
+    Node s;
+    // 头结点 != 尾结点
+    // 队列首个节点不为 null
+    // 当前线程是队列中的首个节点
+    return h != t &&
+        ((s = h.next) == null || s.thread != Thread.currentThread());
+}
+```

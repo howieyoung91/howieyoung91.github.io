@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='   操作 作用     lock 把一个变量表示为一个线程独占, 作用于主内存的变量   unlock 把一个变量从锁定状态释放, 作用于主内存的变量   read 把主内存的变量传输到工作内存, 作用于主内存的变量   load 把 read 操作的得到的变量放入工作内存的变量副本,作用于工作内存的变量   use 把一个变量的值传给执行引擎,作用于工作内存的变量   assign 把一个从执行引擎接受到的值赋给工作内存的变量   store 把一个工作内存的一个变量传送到主内存, 作用于工作内存的变量   write 把store得到的变量写入主内存, 作用于主内存的变量    JMM 还规定了如下规则:
+ read/load,store/write必须成对出现 变量在工作内存中改变了必须写回主内存, 不允许丢弃assign 不允许一个线程无原因地把数据写回主内存 在工作内存中不允许使用未初始化的变量, 即在use,store之前必须assign或load 一个变量只能被一个线程lock,同一个线程可以多次lock同一个变量 (可重入) 如果对一个变量执行 lock,那么工作内存要清空这个变量的值, 在执行引擎之前使用之前, 需要重新 load或assign (这也是为什么加锁后线程安全的原因) 对一个变量没有lock,就不允许对它unlock,也不允许unlock被其他线程 lock 住的变量 unlock之前要执行store,write,把工作内存的变量写回主内存  happens-before    操作 作用     程序次序规则 一个线程内,写在前面的操作先于写在后面的操作   管程锁定规则 对于同一个锁, unlock必须先于lock   volatile 规则 对一个 volatile 变量,写操作先于读操作   线程启动规则 Thread#start先于此线程的所有动作   线程终止规则 线程的所有操作先于对此线程的终止检测   线程中断规则 线程的 interrupt 方法的调用先于中断线程检测到中断事件   对象终结规则 一个对象的构造函数的结束先于finalize方法的开始   传递性 A happens-before B, B happens-before C =&amp;gt; A happens-before C    '><title>JVM -  happens-before 规则</title>
+
+<link rel='canonical' href='https://yanghaoyu.xyz/blogs/jvm/happen-before/'>
+
+<link rel="stylesheet" href="/scss/style.min.3945db2248f78ad046039d38b878bb3f1e0db7bc00eb397adc55649b6270be98.css"><meta property='og:title' content='JVM -  happens-before 规则'>
+<meta property='og:description' content='   操作 作用     lock 把一个变量表示为一个线程独占, 作用于主内存的变量   unlock 把一个变量从锁定状态释放, 作用于主内存的变量   read 把主内存的变量传输到工作内存, 作用于主内存的变量   load 把 read 操作的得到的变量放入工作内存的变量副本,作用于工作内存的变量   use 把一个变量的值传给执行引擎,作用于工作内存的变量   assign 把一个从执行引擎接受到的值赋给工作内存的变量   store 把一个工作内存的一个变量传送到主内存, 作用于工作内存的变量   write 把store得到的变量写入主内存, 作用于主内存的变量    JMM 还规定了如下规则:
+ read/load,store/write必须成对出现 变量在工作内存中改变了必须写回主内存, 不允许丢弃assign 不允许一个线程无原因地把数据写回主内存 在工作内存中不允许使用未初始化的变量, 即在use,store之前必须assign或load 一个变量只能被一个线程lock,同一个线程可以多次lock同一个变量 (可重入) 如果对一个变量执行 lock,那么工作内存要清空这个变量的值, 在执行引擎之前使用之前, 需要重新 load或assign (这也是为什么加锁后线程安全的原因) 对一个变量没有lock,就不允许对它unlock,也不允许unlock被其他线程 lock 住的变量 unlock之前要执行store,write,把工作内存的变量写回主内存  happens-before    操作 作用     程序次序规则 一个线程内,写在前面的操作先于写在后面的操作   管程锁定规则 对于同一个锁, unlock必须先于lock   volatile 规则 对一个 volatile 变量,写操作先于读操作   线程启动规则 Thread#start先于此线程的所有动作   线程终止规则 线程的所有操作先于对此线程的终止检测   线程中断规则 线程的 interrupt 方法的调用先于中断线程检测到中断事件   对象终结规则 一个对象的构造函数的结束先于finalize方法的开始   传递性 A happens-before B, B happens-before C =&amp;gt; A happens-before C    '>
+<meta property='og:url' content='https://yanghaoyu.xyz/blogs/jvm/happen-before/'>
+<meta property='og:site_name' content='Howie'>
+<meta property='og:type' content='article'><meta property='article:section' content='Blogs' /><meta property='article:tag' content='并发' /><meta property='article:tag' content='JVM' /><meta property='article:published_time' content='2021-09-09T00:00:00&#43;00:00'/><meta property='article:modified_time' content='2021-09-09T00:00:00&#43;00:00'/>
+<meta name="twitter:title" content="JVM -  happens-before 规则">
+<meta name="twitter:description" content="   操作 作用     lock 把一个变量表示为一个线程独占, 作用于主内存的变量   unlock 把一个变量从锁定状态释放, 作用于主内存的变量   read 把主内存的变量传输到工作内存, 作用于主内存的变量   load 把 read 操作的得到的变量放入工作内存的变量副本,作用于工作内存的变量   use 把一个变量的值传给执行引擎,作用于工作内存的变量   assign 把一个从执行引擎接受到的值赋给工作内存的变量   store 把一个工作内存的一个变量传送到主内存, 作用于工作内存的变量   write 把store得到的变量写入主内存, 作用于主内存的变量    JMM 还规定了如下规则:
+ read/load,store/write必须成对出现 变量在工作内存中改变了必须写回主内存, 不允许丢弃assign 不允许一个线程无原因地把数据写回主内存 在工作内存中不允许使用未初始化的变量, 即在use,store之前必须assign或load 一个变量只能被一个线程lock,同一个线程可以多次lock同一个变量 (可重入) 如果对一个变量执行 lock,那么工作内存要清空这个变量的值, 在执行引擎之前使用之前, 需要重新 load或assign (这也是为什么加锁后线程安全的原因) 对一个变量没有lock,就不允许对它unlock,也不允许unlock被其他线程 lock 住的变量 unlock之前要执行store,write,把工作内存的变量写回主内存  happens-before    操作 作用     程序次序规则 一个线程内,写在前面的操作先于写在后面的操作   管程锁定规则 对于同一个锁, unlock必须先于lock   volatile 规则 对一个 volatile 变量,写操作先于读操作   线程启动规则 Thread#start先于此线程的所有动作   线程终止规则 线程的所有操作先于对此线程的终止检测   线程中断规则 线程的 interrupt 方法的调用先于中断线程检测到中断事件   对象终结规则 一个对象的构造函数的结束先于finalize方法的开始   传递性 A happens-before B, B happens-before C =&amp;gt; A happens-before C    ">
+    <link rel="shortcut icon" href="/img/favicon.ico" />
+
+    </head>
+    <body class="
+    article-page
+    ">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex on-phone--column extended"><aside class="sidebar left-sidebar sticky ">
+    <button class="hamburger hamburger--spin" type="button" id="toggle-menu" aria-label="切换菜单">
+        <span class="hamburger-box">
+            <span class="hamburger-inner"></span>
+        </span>
+    </button>
+
+    <header>
+        
+            
+            <figure class="site-avatar">
+                <a href="/">
+                
+                    
+                    
+                    
+                        
+                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                            height="300" class="site-logo" loading="lazy" alt="Avatar">
+                    
+                
+                </a>
+                
+            </figure>
+            
+        
+        
+        <div class="site-meta">
+            <h1 class="site-name"><a href="/">Howie</a></h1>
+            <h2 class="site-description">Refactor World</h2>
+        </div>
+    </header><ol class="menu" id="main-menu">
+        
+        
+        
+
+        <li >
+            <a href='/tags/%E6%89%8B%E5%86%99spring' >
+                
+                
+                
+                <span>手写Spring</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/tags/jdk' >
+                
+                
+                
+                <span>JDK</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/tags/jvm' >
+                
+                
+                
+                <span>JVM</span>
+            </a>
+        </li>
+        
+
+        <div class="menu-bottom-section">
+            
+            
+                <li id="dark-mode-toggle">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="8" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-right" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="16" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <span>暗色模式</span>
+                </li>
+            
+        </div>
+    </ol>
+</aside>
+<main class="main full-width">
+    <article class="main-article">
+    <header class="article-header">
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/java/" >
+                Java
+            </a>
+        
+    </header>
+    
+
+    <div class="article-title-wrapper">
+        <h2 class="article-title">
+            <a href="/blogs/jvm/happen-before/">JVM -  happens-before 规则</a>
+        </h2>
+    
+        
+    </div>
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Sep 09, 2021</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    阅读时长: 1 分钟
+                </time>
+            </div>
+        
+    </footer>
+    
+
+    
+</div>
+</header>
+
+    <section class="article-content">
+    
+    
+    <div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>操作</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lock</code></td>
+<td>把一个变量表示为一个线程独占, 作用于主内存的变量</td>
+</tr>
+<tr>
+<td><code>unlock</code></td>
+<td>把一个变量从锁定状态释放, 作用于主内存的变量</td>
+</tr>
+<tr>
+<td><code>read</code></td>
+<td>把主内存的变量传输到工作内存, 作用于主内存的变量</td>
+</tr>
+<tr>
+<td><code>load</code></td>
+<td>把 <code>read</code> 操作的得到的变量放入工作内存的变量副本,作用于工作内存的变量</td>
+</tr>
+<tr>
+<td><code>use</code></td>
+<td>把一个变量的值传给执行引擎,作用于工作内存的变量</td>
+</tr>
+<tr>
+<td><code>assign</code></td>
+<td>把一个从执行引擎接受到的值赋给工作内存的变量</td>
+</tr>
+<tr>
+<td><code>store</code></td>
+<td>把一个工作内存的一个变量传送到主内存, 作用于工作内存的变量</td>
+</tr>
+<tr>
+<td><code>write</code></td>
+<td>把<code>store</code>得到的变量写入主内存, 作用于主内存的变量</td>
+</tr>
+</tbody>
+</table></div>
+<p>JMM 还规定了如下规则:</p>
+<ol>
+<li><code>read</code>/<code>load</code>,<code>store</code>/<code>write</code>必须成对出现</li>
+<li>变量在工作内存中改变了必须写回主内存, 不允许丢弃<code>assign</code></li>
+<li>不允许一个线程无原因地把数据写回主内存</li>
+<li>在工作内存中不允许使用未初始化的变量, 即在<code>use</code>,<code>store</code>之前必须<code>assign</code>或<code>load</code></li>
+<li>一个变量只能被一个线程<code>lock</code>,同一个线程可以多次<code>lock</code>同一个变量 (可重入)</li>
+<li><i style="color:red;font-weight:700">如果对一个变量执行 <code>lock</code>,那么工作内存要清空这个变量的值, 在执行引擎之前使用之前, 需要重新 <code>load</code>或<code>assign</code> (这也是为什么加锁后线程安全的原因)</i></li>
+<li>对一个变量没有<code>lock</code>,就不允许对它<code>unlock</code>,也不允许<code>unlock</code>被其他线程 lock 住的变量</li>
+<li><code>unlock</code>之前要执行<code>store</code>,<code>write</code>,把工作内存的变量写回主内存</li>
+</ol>
+<h2 id="happens-before"><code>happens-before</code></h2>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>操作</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>程序次序规则</td>
+<td>一个线程内,写在前面的操作先于写在后面的操作</td>
+</tr>
+<tr>
+<td>管程锁定规则</td>
+<td>对于同一个锁, <code>unlock</code>必须先于<code>lock</code></td>
+</tr>
+<tr>
+<td>volatile 规则</td>
+<td>对一个 volatile 变量,写操作先于读操作</td>
+</tr>
+<tr>
+<td>线程启动规则</td>
+<td><code>Thread#start</code>先于此线程的所有动作</td>
+</tr>
+<tr>
+<td>线程终止规则</td>
+<td>线程的所有操作先于对此线程的终止检测</td>
+</tr>
+<tr>
+<td>线程中断规则</td>
+<td>线程的 interrupt 方法的调用先于中断线程检测到中断事件</td>
+</tr>
+<tr>
+<td>对象终结规则</td>
+<td>一个对象的构造函数的结束先于<code>finalize</code>方法的开始</td>
+</tr>
+<tr>
+<td>传递性</td>
+<td><code>A happens-before B</code>, <code>B happens-before C</code> =&gt; <code>A happens-before C</code></td>
+</tr>
+</tbody>
+</table></div>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/%E5%B9%B6%E5%8F%91/">并发</a>
+        
+            <a href="/tags/jvm/">JVM</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>Licensed under CC BY-NC-SA 4.0</span>
+    </section>
+    </footer>
+
+
+    
+        <link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"integrity="sha384-RZU/ijkSsFbcmivfdRBQDtwuwVqK7GMOw6IMvKyeWL2K5UAlyp6WonmB8m7Jd0Hn"crossorigin="anonymous"
+            ><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.js"integrity="sha384-pK1WpvzWVBQiP0/GjnvRxV4mOb0oxFuyRxJlk6vVw146n3egcN5C925NCP7a7BY8"crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/contrib/auto-render.min.js"integrity="sha384-vZTG03m&#43;2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl"crossorigin="anonymous"
+                defer
+                >
+            </script><script>
+    window.addEventListener("DOMContentLoaded", () => {
+        renderMathInElement(document.querySelector(`.article-content`), {
+            delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "$", right: "$", display: false },
+                { left: "\\(", right: "\\)", display: false },
+                { left: "\\[", right: "\\]", display: true }
+            ]
+        });})
+</script>
+    
+</article>
+
+    
+
+    
+
+<aside class="related-contents--wrapper">
+    <h2 class="section-title">相关文章</h2>
+    <div class="related-contents">
+        <div class="flex article-list--tile">
+            
+                
+<article class="has-image">
+    <a href="/blogs/jvm/synchronized/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/object-monitor.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/object-monitor.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">JVM - synchronized 实现原理</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/blogs/jvm/java-%E7%B1%BB%E7%9A%84%E5%8A%A0%E8%BD%BD/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/blog-hero-jvm-loadclass.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/blog-hero-jvm-loadclass.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">JVM - 类的加载和双亲委派</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/blogs/jvm/gc/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/gc.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/gc.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">JVM - 垃圾收集器</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/blogs/jdk/juc/condition/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/condition.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/condition.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Condition 源码阅读</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/blogs/jdk/juc/abstractqueuedsynchronizer/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/aqs.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/aqs.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">AbstractQueuedSynchronizer 源码阅读</h2>
+        </div>
+    </a>
+</article>
+            
+        </div>
+    </div>
+</aside>
+
+     
+    
+        
+    
+
+    <footer class="site-footer">
+    
+    <section class="copyright">
+        <div class="en"></div>
+        <div class="zh_cn"></div>
+        <div>
+            <a href="https://beian.miit.gov.cn/">蜀ICP备2021003636号</a>
+        </div>
+        <div class="cyber-security">
+            <img src="https://img.alicdn.com/tfs/TB1..50QpXXXXX7XpXXXXXXXXXX-40-40.png" alt="" /> 
+            <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51030202000144">川公网安备 51030202000144号</a>
+        </div>
+        <script>
+            document.querySelector(".copyright .en").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} Howie Young, All rights reserved.`
+            document.querySelector(".copyright .zh_cn").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} 杨浩宇，保留所有权利。`
+        </script>
+    </section>
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        主题 <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.11.0">Stack</a></b> 由 <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a> 设计
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+</script>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Poppins&display=swap");
+   
+   
+   
+   
+   
+  @import url("https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@700&display=swap");
+   
+   
+  @import url('https://fonts.googleapis.com/css2?family=Fira+Code&display=swap');
+</style>
+
+
+
+
+
+
+
+    </body>
+</html>

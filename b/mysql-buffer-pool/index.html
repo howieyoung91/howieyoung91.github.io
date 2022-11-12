@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='在 InnoDB 中，用户的数据和各种系统数据，都是以页的形式存储在磁盘上的。当需要访问某个页的数据时，InnoDB 会把一个完整的页全部加载到内存中，然后再进行对其访问，在访问完毕之后将其放入 Buffer Pool 中缓存起来，下次访问就可以省去磁盘IO的开销了，在默认情况下 Buffer Pool 的大小为 128M'><title>MySQL - Buffer Pool</title>
+
+<link rel='canonical' href='https://yanghaoyu.xyz/b/mysql-buffer-pool/'>
+
+<link rel="stylesheet" href="/scss/style.min.be7bdd4e56c8a6c3c4d30c70154e7694c74256238402d9fd178f53754c079396.css"><meta property='og:title' content='MySQL - Buffer Pool'>
+<meta property='og:description' content='在 InnoDB 中，用户的数据和各种系统数据，都是以页的形式存储在磁盘上的。当需要访问某个页的数据时，InnoDB 会把一个完整的页全部加载到内存中，然后再进行对其访问，在访问完毕之后将其放入 Buffer Pool 中缓存起来，下次访问就可以省去磁盘IO的开销了，在默认情况下 Buffer Pool 的大小为 128M'>
+<meta property='og:url' content='https://yanghaoyu.xyz/b/mysql-buffer-pool/'>
+<meta property='og:site_name' content='Howie'>
+<meta property='og:type' content='article'><meta property='article:section' content='Blogs' /><meta property='article:tag' content='InnoDB' /><meta property='article:tag' content='MySQL' /><meta property='article:published_time' content='2022-04-30T00:00:00&#43;00:00'/><meta property='article:modified_time' content='2022-04-30T00:00:00&#43;00:00'/><meta property='og:image' content='https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/bufferpool.png' />
+<meta name="twitter:title" content="MySQL - Buffer Pool">
+<meta name="twitter:description" content="在 InnoDB 中，用户的数据和各种系统数据，都是以页的形式存储在磁盘上的。当需要访问某个页的数据时，InnoDB 会把一个完整的页全部加载到内存中，然后再进行对其访问，在访问完毕之后将其放入 Buffer Pool 中缓存起来，下次访问就可以省去磁盘IO的开销了，在默认情况下 Buffer Pool 的大小为 128M"><meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content='https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/bufferpool.png' />
+    <link rel="shortcut icon" href="/img/favicon.ico" />
+
+  
+    </head>
+    <body class="
+    article-page
+    ">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex on-phone--column extended"><aside class="sidebar left-sidebar sticky ">
+    <button class="hamburger hamburger--spin" type="button" id="toggle-menu" aria-label="Toggle Menu">
+        <span class="hamburger-box">
+            <span class="hamburger-inner"></span>
+        </span>
+    </button>
+
+    <header>
+        
+            
+            <figure class="site-avatar">
+                <a href="/">
+                
+                    
+                    
+                    
+                        
+                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                            height="300" class="site-logo" loading="lazy" alt="Avatar">
+                    
+                
+                </a>
+                
+                    <span class="emoji">😜</span>
+                
+            </figure>
+            
+        
+        
+        <div class="site-meta">
+            <h1 class="site-name"><a href="/">Howie</a></h1>
+            <h2 class="site-description">Refactor World</h2>
+        </div>
+    </header><ol class="social-menu">
+            
+                <li>
+                    <a 
+                        href='https://github.com/howieyoung91'
+                        target="_blank"
+                        title="GitHub"
+                    >
+                        
+                        
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-brand-github" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+  <path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5" />
+</svg>
+                        
+                    </a>
+                </li>
+            
+                <li>
+                    <a 
+                        href='https://www.instagram.com/howieyoung824/'
+                        target="_blank"
+                        title="Instagram"
+                    >
+                        
+                        
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-brand-instagram" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <rect x="4" y="4" width="16" height="16" rx="4" />
+    <circle cx="12" cy="12" r="3" />
+    <line x1="16.5" y1="7.5" x2="16.5" y2="7.501" />
+  </svg>
+                        
+                    </a>
+                </li>
+            
+                <li>
+                    <a 
+                        href='mailto:ishowieyoung@icloud.com'
+                        target="_blank"
+                        title="Mail"
+                    >
+                        
+                        
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-mail" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <polyline points="3 7 12 13 21 7" />
+  </svg>
+                        
+                    </a>
+                </li>
+            
+        </ol><ol class="menu" id="main-menu">
+        
+        
+        
+
+        <li >
+            <a href='/tags/%E6%89%8B%E5%86%99spring' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-file-text" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+    <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+    <line x1="9" y1="9" x2="10" y2="9" />
+    <line x1="9" y1="13" x2="15" y2="13" />
+    <line x1="9" y1="17" x2="15" y2="17" />
+</svg>
+                
+                <span>Imitate Spring</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/tags/imitate-docker' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-file-text" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+    <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+    <line x1="9" y1="9" x2="10" y2="9" />
+    <line x1="9" y1="13" x2="15" y2="13" />
+    <line x1="9" y1="17" x2="15" y2="17" />
+</svg>
+                
+                <span>Imitate Docker</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/search/' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-search" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="10" cy="10" r="7" />
+  <line x1="21" y1="21" x2="15" y2="15" />
+</svg>
+
+
+
+                
+                <span>Search</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/archives/' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-archive" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <rect x="3" y="4" width="18" height="4" rx="2" />
+  <path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-10" />
+  <line x1="10" y1="12" x2="14" y2="12" />
+</svg>
+
+
+
+                
+                <span>Archives</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/about/' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-user" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="7" r="4" />
+  <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+</svg>
+
+
+
+                
+                <span>About</span>
+            </a>
+        </li>
+        
+
+        <div class="menu-bottom-section">
+            
+            
+                <li id="dark-mode-toggle">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="8" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-right" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="16" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <span>Dark Mode</span>
+                </li>
+            
+        </div>
+    </ol>
+</aside>
+<main class="main full-width">
+    <article class="has-image main-article">
+    <header class="article-header">
+        <div class="article-image">
+            <a href="/b/mysql-buffer-pool/">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/bufferpool.png" loading="lazy" alt="Featured image of post MySQL - Buffer Pool" />
+                
+            </a>
+        </div>
+    
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/database/" >
+                Database
+            </a>
+        
+        
+            <a href="/tags/innodb/" >
+                InnoDB
+            </a>
+        
+            <a href="/tags/mysql/" >
+                MySQL
+            </a>
+        
+    </header>
+    
+
+    <div class="article-title-wrapper">
+        <h2 class="article-title">
+            <a href="/b/mysql-buffer-pool/">MySQL - Buffer Pool</a>
+        </h2>
+    
+        
+        <h3 class="article-subtitle">
+            在 InnoDB 中，用户的数据和各种系统数据，都是以页的形式存储在磁盘上的。当需要访问某个页的数据时，InnoDB 会把一个完整的页全部加载到内存中，然后再进行对其访问，在访问完毕之后将其放入 Buffer Pool 中缓存起来，下次访问就可以省去磁盘IO的开销了，在默认情况下 Buffer Pool 的大小为 128M
+        </h3>
+        
+    </div>
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Apr 30, 2022</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    1 minute read
+                </time>
+            </div>
+        
+    </footer>
+    
+
+    
+</div>
+</header>
+
+    <section class="article-content">
+    
+    
+    <p>在 Buffer Pool 中默认的缓存页和磁盘上的页是一样的大小，16KB。
+缓存页中大致包含了该页的表空间编号、页号、缓存页的地址、链表节点信息、一些锁信息以及 LSN 信息</p>
+<h2 id="buffer-pool-内存结构">Buffer Pool 内存结构</h2>
+<p><img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/bufferpool.png"
+	
+	
+	
+	loading="lazy"
+	
+		alt="buffer-pool"
+	
+	
+></p>
+<p>每个控制块大约占用缓存页大小的 5%，系统变量 <code>innodb_buffer_pool_size</code> 是不包含这部分控制块占用的内存空间大小，那么 InnoDB 在为 Buffer Pool 向操作系统申请连续的内存空间时，这片连续的内存空间一般会比 <code>innodb_buffer_pool_size</code> 的值大 5% 左右。</p>
+<h3 id="free-链表">free 链表</h3>
+<p>在 MySQL 启动时，会对 Buffer Pool 进行初始化，划分出控制块和缓存页，使用 <code>free 链表</code> 保存未使用的控制块，可见在最开始时，所有控制块都会被加入 <code>free 链表</code>。当需要使用时，就从这条链表中取出一个控制块，填入相关信息，然后从链表中删除</p>
+<h3 id="使用-hash-加速查找">使用 hash 加速查找</h3>
+<p>为了加速缓存页的查找，InnoDB 使用表空间号 + 页号作为 key，缓存页作为 value 创建一个哈希表，在需要访问某个页的数据时，先从哈希表中根据表空间号 + 页号看看有没有对应的缓存页，如果有，直接使用该缓存页就好，如果没有，那就从 free 链表中选一个空闲的控制块，然后把磁盘中对应的页加载到该控制块对应的缓存页的位置。</p>
+<h3 id="flush-链表">flush 链表</h3>
+<p>当一个缓存页被修改了，这个页将会被标记为脏页，这些脏页并不是直接就写入粗盘，而是先放入 <code>flush 链表</code>，等到一个合适的时间再写入磁盘，这样减少了 IO 次数，提高了性能。在结构上 <code>flush 链表</code>和 <code>free 链表</code>差不多</p>
+<h3 id="对-lru-进行优化">对 LRU 进行优化</h3>
+<p>Buffer Pool 并不是使用传统的 LRU，它还对 LRU 做了许多优化</p>
+<h4 id="预读">预读</h4>
+<p>预读主要分为<code>线性预读</code>和<code>随机预读</code></p>
+<ul>
+<li>
+<p><code>线性预读</code></p>
+<p>InnoDB 的提供了一个系统变量 <code>innodb_read_ahead_threshold</code>(default 56)，如果顺序访问了某个区（extent）的页面，超过这个系统变量的值，就会触发一次异步读取下一个区中全部的页面到 Buffer Pool 的请求，由于是异步读取(底层使用<code>AIO</code>)，那么从磁盘中加载这些被预读的页面并不会影响到当前工作线程的正常执行。</p>
+</li>
+<li>
+<p><code>随机预读</code></p>
+<p>如果 Buffer Pool 中已经存在某个区的 13 个连续的页面，不管这些页面是不是顺序读取的，都会触发一次异步读取本区中所有其的页面到 Buffer Pool 的请求。这项功能默认关闭，可以通过 <code>innodb_random_read_ahead</code> 系统变量进行开启</p>
+</li>
+</ul>
+<h4 id="冷热分离">冷热分离</h4>
+<p>预读机制极大地提高语句执行的效率，当然这只是在预读的页面能使用到的情况下，如果用不到，那么这些页面将会把原先那些有用的缓存刷掉。类似的，一次全表扫描，也会把原来有用的缓存页逐出，但是全表扫描的频率是很低的，又可能访问一次之后，又要等很久才进行一次全表扫描，这样来看，一次全表扫描就把缓存页逐出的操作是非常不划算的。</p>
+<p>为了解决以上两个问题，InnoDB 对 LRU 链表做了<code>冷热分离</code>。</p>
+<p>LRU 链表被分为两部分：<code>old 区</code> <code>young 区</code>，其中 <code>old 区</code>占 37%</p>
+<p>具体的机制是这样的：</p>
+<ol>
+<li>
+<p>解决预读的问题
+当磁盘上的某个页面在初次加载到 Buffer Pool 中的某个缓存页时，该缓存页对应的控制块会被放到 <code>old 区</code>域的头部。这样针对预读到 Buffer Pool 却不进行后续访问的页面就会被逐渐从 <code>old 区</code>域逐出，而不会影响 <code>young 区</code>中被使用比较频繁的缓存页。</p>
+</li>
+<li>
+<p>解决全表扫描的问题
+全表扫描的特点是频率低，因此 InnoDb 规定：对 <code>old 区</code>中的页面第一次访问时就要在它的控制块中记录访问时间，如果后续的访问时间与第一次访问的时间小于某个时间，则该页面就不会被移动到 <code>young 区</code>域的头部。这个时间可以由系统变量 <code>innodb_old_blocks_time</code> 控制。这样一来，当全表扫描的时候，由于页面快速的访问，逐出的全部是 <code>old 区</code>的页面，而 <code>young 区</code> 那些频繁访问的页面就留在了内存中。</p>
+</li>
+</ol>
+<h3 id="把脏页写入磁盘">把脏页写入磁盘</h3>
+<p>在 InnoDB 中，存在一个线程专门用于把脏页写入磁盘，这条线程主要关注两个地方 <code>LRU 链表</code> <code>flush 链表</code></p>
+<ol>
+<li>
+<p><code>LRU 链表</code></p>
+<p>后台线程会定时从 LRU 链表尾部开始扫描一定数量的页面(通过系统变量<code>innodb_lru_scan_depth</code> 来指定)，如果发现脏页，则会把它们刷新到磁盘。这种刷新方式被叫做 <code>BUF_FLUSH_LRU</code></p>
+</li>
+<li>
+<p><code>flush 链表</code></p>
+<p>后台线程也会定时从 flush 链表中刷新一部分页面到磁盘，这种刷新方式叫<code>BUF_FLUSH_LIST</code></p>
+</li>
+</ol>
+<p>如果后台写入磁盘的线程比较慢，此时又希望缓存一个页面到 Buffer Pool，那么这时就会先看看 LRU 链表尾部有没有未修改的页面，如果没有将会把 LRU 尾部的一个脏页写入磁盘，然后再把新的页面缓存，这就是 <code>BUF_FLUSH_SINGLE_PAGE</code>。</p>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/innodb/">InnoDB</a>
+        
+            <a href="/tags/mysql/">MySQL</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>Licensed under CC BY-NC-SA 4.0</span>
+    </section>
+    </footer>
+
+
+    
+        <link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"integrity="sha384-RZU/ijkSsFbcmivfdRBQDtwuwVqK7GMOw6IMvKyeWL2K5UAlyp6WonmB8m7Jd0Hn"crossorigin="anonymous"
+            ><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.js"integrity="sha384-pK1WpvzWVBQiP0/GjnvRxV4mOb0oxFuyRxJlk6vVw146n3egcN5C925NCP7a7BY8"crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/contrib/auto-render.min.js"integrity="sha384-vZTG03m&#43;2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl"crossorigin="anonymous"
+                defer
+                >
+            </script><script>
+    window.addEventListener("DOMContentLoaded", () => {
+        renderMathInElement(document.querySelector(`.article-content`), {
+            delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "$", right: "$", display: false },
+                { left: "\\(", right: "\\)", display: false },
+                { left: "\\[", right: "\\]", display: true }
+            ]
+        });})
+</script>
+    
+</article>
+
+    
+
+    
+
+<aside class="related-contents--wrapper">
+    <h2 class="section-title">Related contents</h2>
+    <div class="related-contents">
+        <div class="flex article-list--tile">
+            
+                
+<article class="has-image">
+    <a href="/b/mysql-%E9%94%81/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/gaplock.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/gaplock.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">MySQL - 锁</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/b/mysql-innodb-%E8%A1%8C%E6%A0%BC%E5%BC%8F/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/blog-hero-inndb-rowformat.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/blog-hero-inndb-rowformat.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">MySQL - InnoDB 行格式</h2>
+        </div>
+    </a>
+</article>
+            
+        </div>
+    </div>
+</aside>
+
+     
+    
+        
+    
+
+    <footer class="site-footer">
+    
+    <section class="copyright">
+        <div class="en"></div>
+        <div class="zh_cn"></div>
+        <div>
+            <a href="https://beian.miit.gov.cn/">蜀ICP备2021003636号</a>
+        </div>
+        <div class="cyber-security">
+            <img src="https://img.alicdn.com/tfs/TB1..50QpXXXXX7XpXXXXXXXXXX-40-40.png" alt="" /> 
+            <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51030202000144">川公网安备 51030202000144号</a>
+        </div>
+        <script>
+            document.querySelector(".copyright .en").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} Howie Young, All rights reserved.`
+            document.querySelector(".copyright .zh_cn").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} 杨浩宇，保留所有权利。`
+        </script>
+    </section>
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.11.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    <aside class="sidebar right-sidebar sticky">
+        
+            
+                
+    <section class="widget archives">
+        <div class="widget-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <line x1="5" y1="9" x2="19" y2="9" />
+  <line x1="5" y1="15" x2="19" y2="15" />
+  <line x1="11" y1="4" x2="7" y2="20" />
+  <line x1="17" y1="4" x2="13" y2="20" />
+</svg>
+
+
+
+        </div>
+        <h2 class="widget-title section-title">Table of contents</h2>
+        
+        <div class="widget--toc">
+            <nav id="TableOfContents">
+  <ol>
+    <li><a href="#buffer-pool-内存结构">Buffer Pool 内存结构</a>
+      <ol>
+        <li><a href="#free-链表">free 链表</a></li>
+        <li><a href="#使用-hash-加速查找">使用 hash 加速查找</a></li>
+        <li><a href="#flush-链表">flush 链表</a></li>
+        <li><a href="#对-lru-进行优化">对 LRU 进行优化</a>
+          <ol>
+            <li><a href="#预读">预读</a></li>
+            <li><a href="#冷热分离">冷热分离</a></li>
+          </ol>
+        </li>
+        <li><a href="#把脏页写入磁盘">把脏页写入磁盘</a></li>
+      </ol>
+    </li>
+  </ol>
+</nav>
+        </div>
+    </section>
+
+            
+        
+
+        <section class="copyright">
+            <div class="en"></div>
+            <div class="zh_cn"></div>
+            <div>
+                <a href="https://beian.miit.gov.cn/">蜀ICP备2021003636号</a>
+            </div>
+            <div class="cyber-security">
+                <img src="https://img.alicdn.com/tfs/TB1..50QpXXXXX7XpXXXXXXXXXX-40-40.png" alt="" /> 
+                <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51030202000144">川公网安备 51030202000144号</a>
+            </div>
+            <script>
+                document.querySelector(".sidebar .copyright .en").innerHTML =
+                    `Copyright ©2021-${new Date().getFullYear()} Howie Young, All rights reserved.`
+                document.querySelector(".sidebar .copyright .zh_cn").innerHTML =
+                    `Copyright ©2021-${new Date().getFullYear()} 杨浩宇，保留所有权利。`
+            </script>
+        </section>
+    </aside>
+
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+</script>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Poppins&display=swap");
+   
+   
+   
+   
+   
+  @import url("https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@700&display=swap");
+   
+   
+  @import url('https://fonts.googleapis.com/css2?family=Fira+Code&display=swap');
+</style>
+
+
+
+
+
+
+
+
+
+<script src="https://cdn.jsdelivr.net/gh/zhixuan2333/gh-blog@v0.1.0/js/nprogress.min.js"
+    integrity="sha384-bHDlAEUFxsRI7JfULv3DTpL2IXbbgn4JHQJibgo5iiXSK6Iu8muwqHANhun74Cqg"
+    crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/zhixuan2333/gh-blog@v0.1.0/css/nprogress.css"
+    integrity="sha384-KJyhr2syt5+4M9Pz5dipCvTrtvOmLk/olWVdfhAp858UCa64Ia5GFpTN7+G4BWpE" crossorigin="anonymous" />
+<script>
+    NProgress.start();
+    document.addEventListener("readystatechange", () => {
+        if (document.readyState === "interactive") NProgress.inc(0.8);
+        if (document.readyState === "complete") NProgress.done();
+    });
+</script>
+    </body>
+
+
+</html>

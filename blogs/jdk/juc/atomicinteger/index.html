@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content=' AtomicInteger  是一个提供原子操作的  Integer, 这个类是线程安全的'><title>AtomicInteger &amp; CAS 源码阅读</title>
+
+<link rel='canonical' href='https://yanghaoyu.xyz/blogs/jdk/juc/atomicinteger/'>
+
+<link rel="stylesheet" href="/scss/style.min.3945db2248f78ad046039d38b878bb3f1e0db7bc00eb397adc55649b6270be98.css"><meta property='og:title' content='AtomicInteger &amp; CAS 源码阅读'>
+<meta property='og:description' content=' AtomicInteger  是一个提供原子操作的  Integer, 这个类是线程安全的'>
+<meta property='og:url' content='https://yanghaoyu.xyz/blogs/jdk/juc/atomicinteger/'>
+<meta property='og:site_name' content='Howie'>
+<meta property='og:type' content='article'><meta property='article:section' content='Blogs' /><meta property='article:tag' content='JUC' /><meta property='article:tag' content='JDK' /><meta property='article:tag' content='并发' /><meta property='article:published_time' content='2021-08-06T00:00:00&#43;00:00'/><meta property='article:modified_time' content='2021-08-06T00:00:00&#43;00:00'/>
+<meta name="twitter:title" content="AtomicInteger &amp; CAS 源码阅读">
+<meta name="twitter:description" content=" AtomicInteger  是一个提供原子操作的  Integer, 这个类是线程安全的">
+    <link rel="shortcut icon" href="/img/favicon.ico" />
+
+    </head>
+    <body class="
+    article-page
+    ">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex on-phone--column extended"><aside class="sidebar left-sidebar sticky ">
+    <button class="hamburger hamburger--spin" type="button" id="toggle-menu" aria-label="切换菜单">
+        <span class="hamburger-box">
+            <span class="hamburger-inner"></span>
+        </span>
+    </button>
+
+    <header>
+        
+            
+            <figure class="site-avatar">
+                <a href="/">
+                
+                    
+                    
+                    
+                        
+                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                            height="300" class="site-logo" loading="lazy" alt="Avatar">
+                    
+                
+                </a>
+                
+            </figure>
+            
+        
+        
+        <div class="site-meta">
+            <h1 class="site-name"><a href="/">Howie</a></h1>
+            <h2 class="site-description">Refactor World</h2>
+        </div>
+    </header><ol class="menu" id="main-menu">
+        
+        
+        
+
+        <li >
+            <a href='/tags/%E6%89%8B%E5%86%99spring' >
+                
+                
+                
+                <span>手写Spring</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/tags/jdk' >
+                
+                
+                
+                <span>JDK</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/tags/jvm' >
+                
+                
+                
+                <span>JVM</span>
+            </a>
+        </li>
+        
+
+        <div class="menu-bottom-section">
+            
+            
+                <li id="dark-mode-toggle">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="8" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-right" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="16" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <span>暗色模式</span>
+                </li>
+            
+        </div>
+    </ol>
+</aside>
+<main class="main full-width">
+    <article class="main-article">
+    <header class="article-header">
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/java/" >
+                Java
+            </a>
+        
+    </header>
+    
+
+    <div class="article-title-wrapper">
+        <h2 class="article-title">
+            <a href="/blogs/jdk/juc/atomicinteger/">AtomicInteger &amp; CAS 源码阅读</a>
+        </h2>
+    
+        
+        <h3 class="article-subtitle">
+             AtomicInteger  是一个提供原子操作的  Integer, 这个类是线程安全的
+        </h3>
+        
+    </div>
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Aug 06, 2021</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    阅读时长: 2 分钟
+                </time>
+            </div>
+        
+    </footer>
+    
+
+    
+</div>
+</header>
+
+    <section class="article-content">
+    
+    
+    <!-- more -->
+<h1 id="基本属性">基本属性</h1>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="c1">// Unsafe 实例 用于操作底层
+</span><span class="c1"></span><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">jdk</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">misc</span><span class="o">.</span><span class="na">Unsafe</span> <span class="n">U</span> <span class="o">=</span> <span class="n">jdk</span><span class="o">.</span><span class="na">internal</span><span class="o">.</span><span class="na">misc</span><span class="o">.</span><span class="na">Unsafe</span><span class="o">.</span><span class="na">getUnsafe</span><span class="o">();</span>
+<span class="c1">// value的偏移地址
+</span><span class="c1"></span><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">long</span> <span class="n">VALUE</span> <span class="o">=</span> <span class="n">U</span><span class="o">.</span><span class="na">objectFieldOffset</span><span class="o">(</span><span class="n">AtomicInteger</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="s">&#34;value&#34;</span><span class="o">);</span>
+<span class="kd">private</span> <span class="kd">volatile</span> <span class="kt">int</span> <span class="n">value</span><span class="o">;</span>
+</code></pre></div><h1 id="使用-cas-实现原子操作">使用 CAS 实现原子操作</h1>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">final</span> <span class="kt">int</span> <span class="nf">incrementAndGet</span><span class="o">()</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="n">U</span><span class="o">.</span><span class="na">getAndAddInt</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">VALUE</span><span class="o">,</span> <span class="n">1</span><span class="o">)</span> <span class="o">+</span> <span class="n">1</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></div><p><code>getAndAddInt</code> 首先会获取 v 的值,然后使用 CAS 修改 v,如果修改失败,则表明 v 被其他的线程修改,
+则继续获取 v,继续使用 CAS 修改,直到修改成功,否则一直自旋</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="nd">@HotSpotIntrinsicCandidate</span>
+<span class="kd">public</span> <span class="kd">final</span> <span class="kt">int</span> <span class="nf">getAndAddInt</span><span class="o">(</span><span class="n">Object</span> <span class="n">o</span><span class="o">,</span> <span class="kt">long</span> <span class="n">offset</span><span class="o">,</span> <span class="kt">int</span> <span class="n">delta</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kt">int</span> <span class="n">v</span><span class="o">;</span>
+    <span class="k">do</span> <span class="o">{</span>
+        <span class="c1">// 获取对象o中offset地址处对应的int型字段的值，
+</span><span class="c1"></span>        <span class="c1">// 支持volatile语义
+</span><span class="c1"></span>        <span class="n">v</span> <span class="o">=</span> <span class="n">getIntVolatile</span><span class="o">(</span><span class="n">o</span><span class="o">,</span> <span class="n">offset</span><span class="o">);</span>
+        <span class="c1">// 拿期望值v与对象o的offset地址处的当前值比较，
+</span><span class="c1"></span>        <span class="c1">// 如果两个值相等，将当前值更新为 v + delta，并
+</span><span class="c1"></span>        <span class="c1">// 返回true，否则返回false
+</span><span class="c1"></span>    <span class="o">}</span> <span class="k">while</span> <span class="o">(!</span><span class="n">weakCompareAndSetInt</span><span class="o">(</span><span class="n">o</span><span class="o">,</span> <span class="n">offset</span><span class="o">,</span> <span class="n">v</span><span class="o">,</span> <span class="n">v</span> <span class="o">+</span> <span class="n">delta</span><span class="o">));</span>
+    <span class="k">return</span> <span class="n">v</span><span class="o">;</span>
+<span class="o">}</span>
+
+<span class="c1">// 拿期望值expected与对象o的offset地址处的当前值比较，如果两个值相等，将当前值更新为x
+</span><span class="c1"></span><span class="nd">@HotSpotIntrinsicCandidate</span>
+<span class="kd">public</span> <span class="kd">final</span> <span class="kt">boolean</span> <span class="nf">weakCompareAndSetInt</span><span class="o">(</span><span class="n">Object</span> <span class="n">o</span><span class="o">,</span> <span class="kt">long</span> <span class="n">offset</span><span class="o">,</span> <span class="kt">int</span> <span class="n">expected</span><span class="o">,</span> <span class="kt">int</span> <span class="n">x</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="n">compareAndSetInt</span><span class="o">(</span><span class="n">o</span><span class="o">,</span> <span class="n">offset</span><span class="o">,</span> <span class="n">expected</span><span class="o">,</span> <span class="n">x</span><span class="o">);</span>
+<span class="o">}</span>
+
+<span class="nd">@HotSpotIntrinsicCandidate</span>
+<span class="kd">public</span> <span class="kd">final</span> <span class="kd">native</span> <span class="kt">boolean</span> <span class="nf">compareAndSetInt</span><span class="o">(</span><span class="n">Object</span> <span class="n">o</span><span class="o">,</span> <span class="kt">long</span> <span class="n">offset</span><span class="o">,</span> <span class="kt">int</span> <span class="n">expected</span><span class="o">,</span> <span class="kt">int</span> <span class="n">x</span><span class="o">);</span>
+</code></pre></div><h3 id="compareandsetint-的实现"><code>compareAndSetInt</code> 的实现</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">UNSAFE_ENTRY</span><span class="p">(</span>
+    <span class="n">jboolean</span><span class="p">,</span>
+    <span class="n">Unsafe_CompareAndSwapInt</span><span class="p">(</span><span class="n">JNIEnv</span> <span class="o">*</span><span class="n">env</span><span class="p">,</span> <span class="n">jobject</span> <span class="n">unsafe</span><span class="p">,</span> <span class="n">jobject</span> <span class="n">obj</span><span class="p">,</span> <span class="n">jlong</span> <span class="n">offset</span><span class="p">,</span> <span class="n">jint</span> <span class="n">e</span><span class="p">,</span> <span class="n">jint</span> <span class="n">x</span><span class="p">)</span>
+  <span class="p">)</span>
+  <span class="n">UnsafeWrapper</span><span class="p">(</span><span class="s">&#34;Unsafe_CompareAndSwapInt&#34;</span><span class="p">);</span>
+  <span class="n">oop</span> <span class="n">p</span> <span class="o">=</span> <span class="n">JNIHandles</span><span class="o">::</span><span class="n">resolve</span><span class="p">(</span><span class="n">obj</span><span class="p">);</span>
+  <span class="n">jint</span><span class="o">*</span> <span class="n">addr</span> <span class="o">=</span> <span class="p">(</span><span class="n">jint</span> <span class="o">*</span><span class="p">)</span> <span class="n">index_oop_from_field_offset_long</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">offset</span><span class="p">);</span>
+  <span class="c1">// 使用 cmpxchg 实现CAS
+</span><span class="c1"></span>  <span class="k">return</span> <span class="p">(</span><span class="n">jint</span><span class="p">)(</span><span class="n">Atomic</span><span class="o">::</span><span class="n">cmpxchg</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">e</span><span class="p">))</span> <span class="o">==</span> <span class="n">e</span><span class="p">;</span>
+<span class="n">UNSAFE_END</span>
+</code></pre></div><h3 id="cmpxchg-在-linux--x86-的实现"><code>cmpxchg</code> 在 Linux + x86 的实现</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="c1">// Adding a lock prefix to an instruction on MP machine
+</span><span class="c1"></span><span class="cp">#define LOCK_IF_MP(mp) &#34;cmp $0, &#34; #mp &#34;; je 1f; lock; 1: &#34;
+</span><span class="cp"></span>
+<span class="kr">inline</span> <span class="n">jint</span> <span class="n">Atomic</span><span class="o">::</span><span class="n">cmpxchg</span>
+    <span class="p">(</span><span class="n">jint</span> <span class="n">exchange_value</span><span class="p">,</span> <span class="k">volatile</span> <span class="n">jint</span> <span class="o">*</span><span class="n">dest</span><span class="p">,</span> <span class="n">jint</span> <span class="n">compare_value</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// 判断是否是multiprocessor(多核处理器)
+</span><span class="c1"></span>    <span class="kt">int</span> <span class="n">mp</span> <span class="o">=</span> <span class="n">os</span><span class="o">::</span><span class="n">is_MP</span><span class="p">();</span>
+    <span class="c1">// __asm__  表示 汇编开始
+</span><span class="c1"></span>    <span class="c1">// volatile 表示 禁止编译器对代码进行优化
+</span><span class="c1"></span>    <span class="c1">// LOCK_IF_MP 会根据 CPU是否多核 来决定是否为 cmpxchgl 添加上 lock 指令
+</span><span class="c1"></span>    <span class="n">__asm__</span> <span class="nf">volatile</span><span class="p">(</span><span class="n">LOCK_IF_MP</span><span class="p">(</span><span class="o">%</span><span class="mi">4</span><span class="p">)</span> <span class="s">&#34;cmpxchgl %1,(%3)&#34;</span>
+                     <span class="o">:</span> <span class="s">&#34;=a&#34;</span><span class="p">(</span><span class="n">exchange_value</span><span class="p">)</span>
+                     <span class="o">:</span> <span class="s">&#34;r&#34;</span><span class="p">(</span><span class="n">exchange_value</span><span class="p">),</span> <span class="s">&#34;a&#34;</span><span class="p">(</span><span class="n">compare_value</span><span class="p">),</span> <span class="s">&#34;r&#34;</span><span class="p">(</span><span class="n">dest</span><span class="p">),</span> <span class="s">&#34;r&#34;</span><span class="p">(</span><span class="n">mp</span><span class="p">)</span>
+                     <span class="o">:</span> <span class="s">&#34;cc&#34;</span><span class="p">,</span> <span class="s">&#34;memory&#34;</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">exchange_value</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="cp">#define LOCK_IF_MP(mp) __asm cmp mp, 0  \
+</span><span class="cp">                       __asm je L0      \
+</span><span class="cp">                       __asm _emit 0xF0 \
+</span><span class="cp">                       __asm L0:
+</span><span class="cp"></span>
+<span class="kr">inline</span> <span class="n">jint</span> <span class="n">Atomic</span><span class="o">::</span><span class="n">cmpxchg</span>
+    <span class="p">(</span><span class="n">jint</span> <span class="n">exchange_value</span><span class="p">,</span> <span class="k">volatile</span> <span class="n">jint</span> <span class="o">*</span><span class="n">dest</span><span class="p">,</span> <span class="n">jint</span> <span class="n">compare_value</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// alternative for InterlockedCompareExchange
+</span><span class="c1"></span>        <span class="kt">int</span> <span class="n">mp</span> <span class="o">=</span> <span class="n">os</span><span class="o">::</span><span class="n">is_MP</span><span class="p">();</span>
+        <span class="kr">__asm</span> <span class="p">{</span>
+            <span class="n">mov</span> <span class="n">edx</span><span class="p">,</span> <span class="n">dest</span>
+            <span class="n">mov</span> <span class="n">ecx</span><span class="p">,</span> <span class="n">exchange_value</span>
+            <span class="n">mov</span> <span class="n">eax</span><span class="p">,</span> <span class="n">compare_value</span>
+            <span class="n">LOCK_IF_MP</span><span class="p">(</span><span class="n">mp</span><span class="p">)</span>
+            <span class="n">cmpxchg</span> <span class="n">dword</span> <span class="n">ptr</span> <span class="p">[</span><span class="n">edx</span><span class="p">],</span> <span class="n">ecx</span>
+        <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div><h3 id="lock-前缀"><code>lock</code> 前缀</h3>
+<ol>
+<li>可以确保后续指令执行的原子性。
+<ul>
+<li>使用 <code>总线锁定</code>
+CPU 在总线上输出<code>LOCK#</code>信号,暂时阻塞其他 CPU 通过总线对内存进行操作,这个开销非常大的,这在 Pentium 及之前的处理器中被采用</li>
+<li>使用 <code>缓存锁定</code>
+缓存锁定是某个 CPU 对缓存数据进行更改时，会通知缓存了该数据的 CPU 抛弃缓存的数据或者从内存重新读取。
+但是如果操作的数在多个缓存行内,则直接采用<code>总线缓存</code></li>
+</ul>
+</li>
+<li>禁止该指令与前面和后面的读写指令重排序。</li>
+<li>把写缓冲区的所有数据刷新到内存中。
+上面的第 2 点和第 3 点所具有的内存屏障效果，保证了 CAS 同时具有 <code>volatile 读</code>和 <code>volatile 写</code>的内存语义。</li>
+</ol>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/juc/">JUC</a>
+        
+            <a href="/tags/jdk/">JDK</a>
+        
+            <a href="/tags/%E5%B9%B6%E5%8F%91/">并发</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>Licensed under CC BY-NC-SA 4.0</span>
+    </section>
+    </footer>
+
+
+    
+        <link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"integrity="sha384-RZU/ijkSsFbcmivfdRBQDtwuwVqK7GMOw6IMvKyeWL2K5UAlyp6WonmB8m7Jd0Hn"crossorigin="anonymous"
+            ><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.js"integrity="sha384-pK1WpvzWVBQiP0/GjnvRxV4mOb0oxFuyRxJlk6vVw146n3egcN5C925NCP7a7BY8"crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/contrib/auto-render.min.js"integrity="sha384-vZTG03m&#43;2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl"crossorigin="anonymous"
+                defer
+                >
+            </script><script>
+    window.addEventListener("DOMContentLoaded", () => {
+        renderMathInElement(document.querySelector(`.article-content`), {
+            delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "$", right: "$", display: false },
+                { left: "\\(", right: "\\)", display: false },
+                { left: "\\[", right: "\\]", display: true }
+            ]
+        });})
+</script>
+    
+</article>
+
+    
+
+    
+
+<aside class="related-contents--wrapper">
+    <h2 class="section-title">相关文章</h2>
+    <div class="related-contents">
+        <div class="flex article-list--tile">
+            
+                
+<article class="has-image">
+    <a href="/blogs/jdk/juc/condition/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/condition.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/condition.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Condition 源码阅读</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/blogs/jdk/juc/abstractqueuedsynchronizer/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/aqs.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/aqs.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">AbstractQueuedSynchronizer 源码阅读</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/blogs/jdk/juc/copyonwritearraylist/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/copyonwritearraylist.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/copyonwritearraylist.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">CopyOnWriteArrayList 源码阅读</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="">
+    <a href="/blogs/jvm/happen-before/">
+        
+        
+
+        <div class="article-details">
+            <h2 class="article-title">JVM -  happens-before 规则</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/blogs/jvm/synchronized/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/object-monitor.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/object-monitor.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">JVM - synchronized 实现原理</h2>
+        </div>
+    </a>
+</article>
+            
+        </div>
+    </div>
+</aside>
+
+     
+    
+        
+    
+
+    <footer class="site-footer">
+    
+    <section class="copyright">
+        <div class="en"></div>
+        <div class="zh_cn"></div>
+        <div>
+            <a href="https://beian.miit.gov.cn/">蜀ICP备2021003636号</a>
+        </div>
+        <div class="cyber-security">
+            <img src="https://img.alicdn.com/tfs/TB1..50QpXXXXX7XpXXXXXXXXXX-40-40.png" alt="" /> 
+            <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51030202000144">川公网安备 51030202000144号</a>
+        </div>
+        <script>
+            document.querySelector(".copyright .en").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} Howie Young, All rights reserved.`
+            document.querySelector(".copyright .zh_cn").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} 杨浩宇，保留所有权利。`
+        </script>
+    </section>
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        主题 <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.11.0">Stack</a></b> 由 <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a> 设计
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+</script>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Poppins&display=swap");
+   
+   
+   
+   
+   
+  @import url("https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@700&display=swap");
+   
+   
+  @import url('https://fonts.googleapis.com/css2?family=Fira+Code&display=swap');
+</style>
+
+
+
+
+
+
+
+    </body>
+</html>

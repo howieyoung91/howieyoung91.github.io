@@ -1,0 +1,387 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <title>InnoDB on Howie</title>
+        <link>https://yanghaoyu.xyz/tags/innodb/</link>
+        <description>Recent content in InnoDB on Howie</description>
+        <generator>Hugo -- gohugo.io</generator>
+        <language>en-us</language>
+        <lastBuildDate>Sat, 30 Apr 2022 00:00:00 +0000</lastBuildDate><atom:link href="https://yanghaoyu.xyz/tags/innodb/index.xml" rel="self" type="application/rss+xml" /><item>
+        <title>MySQL - Buffer Pool</title>
+        <link>https://yanghaoyu.xyz/b/mysql-buffer-pool/</link>
+        <pubDate>Sat, 30 Apr 2022 00:00:00 +0000</pubDate>
+        
+        <guid>https://yanghaoyu.xyz/b/mysql-buffer-pool/</guid>
+        <description>&lt;img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/bufferpool.png" alt="Featured image of post MySQL - Buffer Pool" /&gt;&lt;p&gt;在 Buffer Pool 中默认的缓存页和磁盘上的页是一样的大小，16KB。
+缓存页中大致包含了该页的表空间编号、页号、缓存页的地址、链表节点信息、一些锁信息以及 LSN 信息&lt;/p&gt;
+&lt;h2 id=&#34;buffer-pool-内存结构&#34;&gt;Buffer Pool 内存结构&lt;/h2&gt;
+&lt;p&gt;&lt;img src=&#34;https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/bufferpool.png&#34;
+	
+	
+	
+	loading=&#34;lazy&#34;
+	
+		alt=&#34;buffer-pool&#34;
+	
+	
+&gt;&lt;/p&gt;
+&lt;p&gt;每个控制块大约占用缓存页大小的 5%，系统变量 &lt;code&gt;innodb_buffer_pool_size&lt;/code&gt; 是不包含这部分控制块占用的内存空间大小，那么 InnoDB 在为 Buffer Pool 向操作系统申请连续的内存空间时，这片连续的内存空间一般会比 &lt;code&gt;innodb_buffer_pool_size&lt;/code&gt; 的值大 5% 左右。&lt;/p&gt;
+&lt;h3 id=&#34;free-链表&#34;&gt;free 链表&lt;/h3&gt;
+&lt;p&gt;在 MySQL 启动时，会对 Buffer Pool 进行初始化，划分出控制块和缓存页，使用 &lt;code&gt;free 链表&lt;/code&gt; 保存未使用的控制块，可见在最开始时，所有控制块都会被加入 &lt;code&gt;free 链表&lt;/code&gt;。当需要使用时，就从这条链表中取出一个控制块，填入相关信息，然后从链表中删除&lt;/p&gt;
+&lt;h3 id=&#34;使用-hash-加速查找&#34;&gt;使用 hash 加速查找&lt;/h3&gt;
+&lt;p&gt;为了加速缓存页的查找，InnoDB 使用表空间号 + 页号作为 key，缓存页作为 value 创建一个哈希表，在需要访问某个页的数据时，先从哈希表中根据表空间号 + 页号看看有没有对应的缓存页，如果有，直接使用该缓存页就好，如果没有，那就从 free 链表中选一个空闲的控制块，然后把磁盘中对应的页加载到该控制块对应的缓存页的位置。&lt;/p&gt;
+&lt;h3 id=&#34;flush-链表&#34;&gt;flush 链表&lt;/h3&gt;
+&lt;p&gt;当一个缓存页被修改了，这个页将会被标记为脏页，这些脏页并不是直接就写入粗盘，而是先放入 &lt;code&gt;flush 链表&lt;/code&gt;，等到一个合适的时间再写入磁盘，这样减少了 IO 次数，提高了性能。在结构上 &lt;code&gt;flush 链表&lt;/code&gt;和 &lt;code&gt;free 链表&lt;/code&gt;差不多&lt;/p&gt;
+&lt;h3 id=&#34;对-lru-进行优化&#34;&gt;对 LRU 进行优化&lt;/h3&gt;
+&lt;p&gt;Buffer Pool 并不是使用传统的 LRU，它还对 LRU 做了许多优化&lt;/p&gt;
+&lt;h4 id=&#34;预读&#34;&gt;预读&lt;/h4&gt;
+&lt;p&gt;预读主要分为&lt;code&gt;线性预读&lt;/code&gt;和&lt;code&gt;随机预读&lt;/code&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;线性预读&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;InnoDB 的提供了一个系统变量 &lt;code&gt;innodb_read_ahead_threshold&lt;/code&gt;(default 56)，如果顺序访问了某个区（extent）的页面，超过这个系统变量的值，就会触发一次异步读取下一个区中全部的页面到 Buffer Pool 的请求，由于是异步读取(底层使用&lt;code&gt;AIO&lt;/code&gt;)，那么从磁盘中加载这些被预读的页面并不会影响到当前工作线程的正常执行。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;随机预读&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;如果 Buffer Pool 中已经存在某个区的 13 个连续的页面，不管这些页面是不是顺序读取的，都会触发一次异步读取本区中所有其的页面到 Buffer Pool 的请求。这项功能默认关闭，可以通过 &lt;code&gt;innodb_random_read_ahead&lt;/code&gt; 系统变量进行开启&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h4 id=&#34;冷热分离&#34;&gt;冷热分离&lt;/h4&gt;
+&lt;p&gt;预读机制极大地提高语句执行的效率，当然这只是在预读的页面能使用到的情况下，如果用不到，那么这些页面将会把原先那些有用的缓存刷掉。类似的，一次全表扫描，也会把原来有用的缓存页逐出，但是全表扫描的频率是很低的，又可能访问一次之后，又要等很久才进行一次全表扫描，这样来看，一次全表扫描就把缓存页逐出的操作是非常不划算的。&lt;/p&gt;
+&lt;p&gt;为了解决以上两个问题，InnoDB 对 LRU 链表做了&lt;code&gt;冷热分离&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;LRU 链表被分为两部分：&lt;code&gt;old 区&lt;/code&gt; &lt;code&gt;young 区&lt;/code&gt;，其中 &lt;code&gt;old 区&lt;/code&gt;占 37%&lt;/p&gt;
+&lt;p&gt;具体的机制是这样的：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;解决预读的问题
+当磁盘上的某个页面在初次加载到 Buffer Pool 中的某个缓存页时，该缓存页对应的控制块会被放到 &lt;code&gt;old 区&lt;/code&gt;域的头部。这样针对预读到 Buffer Pool 却不进行后续访问的页面就会被逐渐从 &lt;code&gt;old 区&lt;/code&gt;域逐出，而不会影响 &lt;code&gt;young 区&lt;/code&gt;中被使用比较频繁的缓存页。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;解决全表扫描的问题
+全表扫描的特点是频率低，因此 InnoDb 规定：对 &lt;code&gt;old 区&lt;/code&gt;中的页面第一次访问时就要在它的控制块中记录访问时间，如果后续的访问时间与第一次访问的时间小于某个时间，则该页面就不会被移动到 &lt;code&gt;young 区&lt;/code&gt;域的头部。这个时间可以由系统变量 &lt;code&gt;innodb_old_blocks_time&lt;/code&gt; 控制。这样一来，当全表扫描的时候，由于页面快速的访问，逐出的全部是 &lt;code&gt;old 区&lt;/code&gt;的页面，而 &lt;code&gt;young 区&lt;/code&gt; 那些频繁访问的页面就留在了内存中。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h3 id=&#34;把脏页写入磁盘&#34;&gt;把脏页写入磁盘&lt;/h3&gt;
+&lt;p&gt;在 InnoDB 中，存在一个线程专门用于把脏页写入磁盘，这条线程主要关注两个地方 &lt;code&gt;LRU 链表&lt;/code&gt; &lt;code&gt;flush 链表&lt;/code&gt;&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;LRU 链表&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;后台线程会定时从 LRU 链表尾部开始扫描一定数量的页面(通过系统变量&lt;code&gt;innodb_lru_scan_depth&lt;/code&gt; 来指定)，如果发现脏页，则会把它们刷新到磁盘。这种刷新方式被叫做 &lt;code&gt;BUF_FLUSH_LRU&lt;/code&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;flush 链表&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;后台线程也会定时从 flush 链表中刷新一部分页面到磁盘，这种刷新方式叫&lt;code&gt;BUF_FLUSH_LIST&lt;/code&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;如果后台写入磁盘的线程比较慢，此时又希望缓存一个页面到 Buffer Pool，那么这时就会先看看 LRU 链表尾部有没有未修改的页面，如果没有将会把 LRU 尾部的一个脏页写入磁盘，然后再把新的页面缓存，这就是 &lt;code&gt;BUF_FLUSH_SINGLE_PAGE&lt;/code&gt;。&lt;/p&gt;
+</description>
+        </item>
+        <item>
+        <title>MySQL - 锁</title>
+        <link>https://yanghaoyu.xyz/b/mysql-%E9%94%81/</link>
+        <pubDate>Sat, 30 Apr 2022 00:00:00 +0000</pubDate>
+        
+        <guid>https://yanghaoyu.xyz/b/mysql-%E9%94%81/</guid>
+        <description>&lt;img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/gaplock.png" alt="Featured image of post MySQL - 锁" /&gt;&lt;h3 id=&#34;全局锁&#34;&gt;全局锁&lt;/h3&gt;
+&lt;p&gt;全局锁是对整个数据库实例加锁，主要应用在做&lt;b&gt;全库的逻辑备份&lt;/b&gt;。
+如果在主库上做备份，那么备份期间主库都都无法执行更新操作，如果在从库上做备份，那么从库无法执行主库同步过来的 binlog，造成了主从同步延迟&lt;/p&gt;
+&lt;p&gt;使用 &lt;code&gt;flush tables with read lock&lt;/code&gt; 即可对整个数据库实例加锁，那么其他客户端执行更新操作将会被阻塞&lt;/p&gt;
+&lt;h3 id=&#34;表级锁&#34;&gt;表级锁&lt;/h3&gt;
+&lt;h4 id=&#34;1-表锁&#34;&gt;1. 表锁&lt;/h4&gt;
+&lt;p&gt;表锁对整张表加锁，开销小，加锁快，但是锁定力度大，很容易发生锁冲突，并发度低，&lt;code&gt;MyISAM&lt;/code&gt; 和 &lt;code&gt;InnoDB&lt;/code&gt; 都支持表锁
+表锁分为&lt;code&gt;读锁&lt;/code&gt;和&lt;code&gt;写锁&lt;/code&gt;,读锁只兼容读锁，写锁则与写锁和读锁都互斥&lt;/p&gt;
+&lt;h4 id=&#34;2-元数据锁-meta-data-lock-mdl&#34;&gt;2. 元数据锁 (Meta Data Lock, MDL)&lt;/h4&gt;
+&lt;p&gt;元数据锁是 &lt;code&gt;mysql 5.5&lt;/code&gt; 新增的锁，元数据锁由 mysql 来控制，无需显示使用，主要是用于避免 DML 和 DDL 冲突，保证读写的正确性。当对某张表进行增删改查的时候会自动加上 MDL 读锁，当对表结构进行修改时会自动加上 MDL 写锁&lt;/p&gt;
+&lt;h4 id=&#34;3-意向锁&#34;&gt;3. 意向锁&lt;/h4&gt;
+&lt;p&gt;当一条 sql 加行锁之后将会向整张表添加意向锁，此后如果尝试向该表添加表锁，那么会提前检查要添加的表锁和已经存在的意向锁是否兼容，如果不兼容将会阻塞，无法加锁&lt;/p&gt;
+&lt;p&gt;意向锁分为 &lt;code&gt;意向读锁(IS)&lt;/code&gt;, &lt;code&gt;意向写锁(IX)&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;兼容情况：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;code&gt;IS&lt;/code&gt; 与表级读锁兼容，与表级写锁不兼容&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;IX&lt;/code&gt; 与表级读锁和表级写锁都互斥&lt;/li&gt;
+&lt;li&gt;意向锁之间不会互斥&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;具体如下表：&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th style=&#34;text-align:center&#34;&gt;兼容性&lt;/th&gt;
+&lt;th style=&#34;text-align:center&#34;&gt;X&lt;/th&gt;
+&lt;th style=&#34;text-align:center&#34;&gt;IX&lt;/th&gt;
+&lt;th style=&#34;text-align:center&#34;&gt;S&lt;/th&gt;
+&lt;th style=&#34;text-align:center&#34;&gt;IS&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;X&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;不兼容&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;不兼容&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;不兼容&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;不兼容&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;IX&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;不兼容&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;兼容&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;不兼容&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;兼容&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;S&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;不兼容&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;不兼容&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;兼容&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;兼容&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;IS&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;不兼容&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;兼容&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;兼容&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;兼容&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h3 id=&#34;行级锁&#34;&gt;行级锁&lt;/h3&gt;
+&lt;p&gt;行级锁每次锁住整行数据，粒度最小，发生锁冲突的概率最低，并发度最高，它是通过对索引项加锁实现的&lt;/p&gt;
+&lt;h4 id=&#34;1-记录锁-record-lock&#34;&gt;1. 记录锁 (Record Lock)&lt;/h4&gt;
+&lt;p&gt;行锁：锁定单行记录的锁，防止其他事务对该记录进行修改&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th style=&#34;text-align:center&#34;&gt;SQL&lt;/th&gt;
+&lt;th style=&#34;text-align:center&#34;&gt;类型&lt;/th&gt;
+&lt;th style=&#34;text-align:center&#34;&gt;说明&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;insert&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;写锁&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;自动加锁&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;update&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;写锁&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;自动加锁&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;delete&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;写锁&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;自动加锁&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;select&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;无锁&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;&lt;b style=&#34;color:var(--custom-code-text-color)&#34;&gt;需要手动加锁&lt;/b&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;select &amp;hellip; in share mode&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;读锁&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;为 select 加上读锁&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;select &amp;hellip; for update&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;写锁&lt;/td&gt;
+&lt;td style=&#34;text-align:center&#34;&gt;为 select 加上写锁&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h4 id=&#34;2-间隙锁-gap-lock&#34;&gt;2. 间隙锁 (Gap Lock)&lt;/h4&gt;
+&lt;p&gt;MySQL 在 &lt;code&gt;REPEATABLE READ&lt;/code&gt; 隔离级别下是可以解决幻读问题的，主要解决方案有两种&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;MVCC&lt;/li&gt;
+&lt;li&gt;加锁&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;在使用加锁解决幻读时有个大问题，就是事务在第一次执行读取操作时，幻影记录还不存在，我们并不能为这些幻影记录加上记录锁。因此 InnoDB 就把前一个记录和该记录的链接锁上，确保不能在该记录的前面插入新的数据，这就是 &lt;code&gt;Gap Lock (间隙锁)&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/gaplock.png&#34;
+	
+	
+	
+	loading=&#34;lazy&#34;
+	
+		alt=&#34;gap-lock&#34;
+	
+	
+&gt;&lt;/p&gt;
+&lt;p&gt;如图所示，为&lt;code&gt;id = 9&lt;/code&gt; 的记录加上一把间隙锁，此时如果某个事务要在 4 ～ 9 之间插入一条记录，那么由于这个间隙锁的存在，这操作将会被阻塞，直到这个间隙锁被释放，才会插入新的记录。对于第一条记录，和最后一条记录，由于有 &lt;code&gt;Infimum&lt;/code&gt; 和 &lt;code&gt;Supremum&lt;/code&gt; 的存在，也是可以加锁成功的&lt;/p&gt;
+&lt;h4 id=&#34;3-临键锁-next-key-lock&#34;&gt;3. 临键锁 (Next-key Lock)&lt;/h4&gt;
+&lt;p&gt;临键锁就相当于&lt;code&gt;间隙锁 + 记录锁&lt;/code&gt;，既可以确保记录的前方不被插入新记录，也可以保证该记录不被修改&lt;/p&gt;
+</description>
+        </item>
+        <item>
+        <title>MySQL - InnoDB 行格式</title>
+        <link>https://yanghaoyu.xyz/b/mysql-innodb-%E8%A1%8C%E6%A0%BC%E5%BC%8F/</link>
+        <pubDate>Mon, 14 Feb 2022 00:00:00 +0000</pubDate>
+        
+        <guid>https://yanghaoyu.xyz/b/mysql-innodb-%E8%A1%8C%E6%A0%BC%E5%BC%8F/</guid>
+        <description>&lt;img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/blog-hero-inndb-rowformat.png" alt="Featured image of post MySQL - InnoDB 行格式" /&gt;&lt;!-- `MySQL` 以记录为单位向表中插入数据, 我们平时是以记录为单位来向表中插入数据的, 这些记录在磁盘上的存放方式被称为行格式 --&gt;
+&lt;p&gt;&lt;code&gt;MySQL&lt;/code&gt; 中有 4 中行格式 &lt;code&gt;Compact&lt;/code&gt;, &lt;code&gt;Redundant&lt;/code&gt;, &lt;code&gt;Dynamic&lt;/code&gt;, &lt;code&gt;Compressed&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;我们可以在创建表时指定所使用的的行格式&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-sql&#34; data-lang=&#34;sql&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;k&#34;&gt;create&lt;/span&gt;&lt;span class=&#34;w&#34;&gt; &lt;/span&gt;&lt;span class=&#34;k&#34;&gt;table&lt;/span&gt;&lt;span class=&#34;w&#34;&gt; &lt;/span&gt;&lt;span class=&#34;k&#34;&gt;table_name&lt;/span&gt;&lt;span class=&#34;w&#34;&gt; &lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;col&lt;/span&gt;&lt;span class=&#34;w&#34;&gt; &lt;/span&gt;&lt;span class=&#34;nb&#34;&gt;int&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;w&#34;&gt; &lt;/span&gt;&lt;span class=&#34;n&#34;&gt;row_format&lt;/span&gt;&lt;span class=&#34;w&#34;&gt; &lt;/span&gt;&lt;span class=&#34;o&#34;&gt;=&lt;/span&gt;&lt;span class=&#34;w&#34;&gt; &lt;/span&gt;&lt;span class=&#34;err&#34;&gt;${&lt;/span&gt;&lt;span class=&#34;n&#34;&gt;row_format_name&lt;/span&gt;&lt;span class=&#34;err&#34;&gt;}&lt;/span&gt;&lt;span class=&#34;w&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;!-- more --&gt;
+&lt;h1 id=&#34;compact&#34;&gt;Compact&lt;/h1&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;变长字段长度列表&lt;/th&gt;
+&lt;th&gt;NULL 值列表&lt;/th&gt;
+&lt;th&gt;记录头&lt;/th&gt;
+&lt;th&gt;列 1&lt;/th&gt;
+&lt;th&gt;列 2&lt;/th&gt;
+&lt;th&gt;列 3&lt;/th&gt;
+&lt;th&gt;&amp;hellip;&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;/table&gt;
+&lt;h2 id=&#34;变长字段长度列表&#34;&gt;变长字段长度列表&lt;/h2&gt;
+&lt;p&gt;用于保存变长字段的长度, 例如 &lt;code&gt;varchar(10)&lt;/code&gt; 这是一个变长类型, 那么就需要把该字段实际占用的字节数保存起来.
+例如, 对于&lt;code&gt;(&#39;1111&#39;,&#39;11&#39;,&#39;1&#39;)&lt;/code&gt;这样一条记录, 每个字段都是 &lt;code&gt;varchar&lt;/code&gt; 类型,并且采用 ASCII 字符集, 那么就需要在这个列表中存入 &lt;code&gt;0x1, 0x2, 0x4&lt;/code&gt; (逆序存放)&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;1 2 4&lt;/th&gt;
+&lt;th&gt;NULL 值列表&lt;/th&gt;
+&lt;th&gt;记录头&lt;/th&gt;
+&lt;th&gt;列 1&lt;/th&gt;
+&lt;th&gt;列 2&lt;/th&gt;
+&lt;th&gt;列 3&lt;/th&gt;
+&lt;th&gt;&amp;hellip;&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;/table&gt;
+&lt;p&gt;如果字符串的长度太长 那么就可能需要 2 byte 或者更多字节来存储 (例如: 一个长度为 1024 字符串,1024 不可能用 1 byte 存下), 另外, 对于变长字符集 (例如: utf8 ), 情况会更复杂, 这是因为 ascii 是定长字符集,每个字符只占用 1 byte, 而 utf8 在 &lt;code&gt;MySQL&lt;/code&gt; 中默认是 utf8mb3(不是 utfmb4,utfmb4 还支持 emoji :smile:), 每一个字符可以占用 1~3 byte. 在 &lt;code&gt;MySQL&lt;/code&gt; 使用 &lt;code&gt;W&lt;/code&gt; 表示某个字符集中一个字符占用最大的字节数, utf8 是 3, gbk 是 2, ascii 是 1, 使用 &lt;code&gt;M&lt;/code&gt; 表示最多能存储的字符数, 那么某个数据类型最多占用 &lt;code&gt;M * W&lt;/code&gt;byte, 而使用 &lt;code&gt;L&lt;/code&gt; 表示实际占用字节长度 ( &lt;code&gt;&#39;1111&#39;&lt;/code&gt; 就是 4 byte)&lt;/p&gt;
+&lt;p&gt;MySQL 使用如下规则来确定使用多少字节来保存变长字段的长度:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;  &lt;span class=&#34;k&#34;&gt;if&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;M&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;*&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;W&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;255&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;L&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;127&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;nx&#34;&gt;use&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;2&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;byte&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;  &lt;span class=&#34;p&#34;&gt;}&lt;/span&gt; &lt;span class=&#34;k&#34;&gt;else&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;nx&#34;&gt;use&lt;/span&gt; &lt;span class=&#34;mi&#34;&gt;1&lt;/span&gt; &lt;span class=&#34;kt&#34;&gt;byte&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;  &lt;span class=&#34;p&#34;&gt;}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;如果 &lt;code&gt;M * W&lt;/code&gt; 超过 255 byte 并且 &lt;code&gt;L&lt;/code&gt; 超过 127 byte, 则使用 2 byte, 否则使用 1 byte。那么 2 byte 就能够存储了吗?&lt;br&gt;
+是的, &lt;code&gt;MySQL&lt;/code&gt; 规定一条记录最多占用 65535 byte(包括 &lt;code&gt;变长字段的长度列表&lt;/code&gt; &lt;code&gt;NULL 值列表&lt;/code&gt; &lt;code&gt;真实数据&lt;/code&gt; ,不包括 &lt;code&gt;记录头&lt;/code&gt; &lt;code&gt;隐藏列&lt;/code&gt; )&lt;br&gt;
+由此,我们可以计算出 varchar 能存储的最大字符数&lt;/p&gt;
+&lt;h3 id=&#34;utf8-下最大字符数&#34;&gt;utf8 下最大字符数&lt;/h3&gt;
+&lt;h4 id=&#34;不声明-not-null&#34;&gt;不声明 not null&lt;/h4&gt;
+&lt;p&gt;变长字段长度列表 2 byte, NULL 值列表 1 byte, 每个字符占用 3 byte(英文虽然是 1 byte,也按 3 byte 算)&lt;br&gt;
+因此 &lt;code&gt;最大字符数数 = (65535 - 2 - 1) / 3 = 21844&lt;/code&gt;&lt;/p&gt;
+&lt;h3 id=&#34;gbk-下最大字符数&#34;&gt;gbk 下最大字符数&lt;/h3&gt;
+&lt;p&gt;变长字段长度列表 2 byte, NULL 值列表 1 byte, 每个字符占用 2 byte(英文虽然是 1 byte,也按 2 byte 算)&lt;br&gt;
+因此 &lt;code&gt;最大字符数数 = (65535 - 2 - 1) / 2 = 32766&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;注意: 这都是在只有一个字段下的情况, 更重要的是&lt;code&gt;变长字段的长度列表 + NULL 值列表 + 真实数据 &amp;lt;= 65535&lt;/code&gt;&lt;/p&gt;
+&lt;h3 id=&#34;一条记录数据太多怎么办&#34;&gt;一条记录数据太多怎么办?&lt;/h3&gt;
+&lt;p&gt;&lt;code&gt;MySQL&lt;/code&gt; 一页占用 16k,即 16384 byte, 如果一条记录太大, 那么一个完整的页面也放不下. 对于占用空间非常大的列,&lt;code&gt;Compact&lt;/code&gt;会先存储一部分数据(前 768 byte), 剩下的数据分别存储在其他页面(称作溢出页)中, 然后把这些页面的地址存到&lt;code&gt;真实数据&lt;/code&gt;里, 这样就能找到完整的数据, 这就叫做行溢出&lt;/p&gt;
+&lt;h2 id=&#34;null-值列表&#34;&gt;NULL 值列表&lt;/h2&gt;
+&lt;p&gt;用于保存一条记录中哪些字段是 null ,如果所有字段都声明为 &lt;code&gt;not null&lt;/code&gt;, 那么 NULL 值列表不存在。
+实际上 NULL 值列表是一个位向量&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;index&lt;/th&gt;
+&lt;th&gt;0&lt;/th&gt;
+&lt;th&gt;1&lt;/th&gt;
+&lt;th&gt;2&lt;/th&gt;
+&lt;th&gt;3&lt;/th&gt;
+&lt;th&gt;4&lt;/th&gt;
+&lt;th&gt;5&lt;/th&gt;
+&lt;th&gt;6&lt;/th&gt;
+&lt;th&gt;7&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;bit&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;例如:
+&lt;code&gt;(null,&#39;howieyoung&#39;,null)&lt;/code&gt; 的 NULL 值列表为:&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;index&lt;/th&gt;
+&lt;th&gt;0&lt;/th&gt;
+&lt;th&gt;1&lt;/th&gt;
+&lt;th&gt;2&lt;/th&gt;
+&lt;th&gt;3&lt;/th&gt;
+&lt;th&gt;4&lt;/th&gt;
+&lt;th&gt;5&lt;/th&gt;
+&lt;th&gt;6&lt;/th&gt;
+&lt;th&gt;7&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;&lt;strong&gt;bit&lt;/strong&gt;&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;1&lt;/td&gt;
+&lt;td&gt;0&lt;/td&gt;
+&lt;td&gt;1&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;每一列的信息在 NULL 值列表中是逆序存放的&lt;br&gt;
+第 1 列对应 7 号位, 1 表示该字段为 null&lt;br&gt;
+第 2 列对应 6 号位, 0 表示该字段不为 null&lt;br&gt;
+第 3 列对应 5 号位, 1 表示该字段为 null&lt;/p&gt;
+&lt;h2 id=&#34;记录头&#34;&gt;记录头&lt;/h2&gt;
+&lt;p&gt;记录头存储了一些基本信息&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;0&lt;/th&gt;
+&lt;th&gt;1&lt;/th&gt;
+&lt;th&gt;2&lt;/th&gt;
+&lt;th&gt;3&lt;/th&gt;
+&lt;th&gt;[4,7]&lt;/th&gt;
+&lt;th&gt;[8,20]&lt;/th&gt;
+&lt;th&gt;[21,23]&lt;/th&gt;
+&lt;th&gt;[24,39]&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;预留&lt;/td&gt;
+&lt;td&gt;预留&lt;/td&gt;
+&lt;td&gt;delete_mask&lt;/td&gt;
+&lt;td&gt;min_rec_mask&lt;/td&gt;
+&lt;td&gt;n_owned&lt;/td&gt;
+&lt;td&gt;heap_no&lt;/td&gt;
+&lt;td&gt;record_type&lt;/td&gt;
+&lt;td&gt;next_record&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;未使用&lt;/td&gt;
+&lt;td&gt;未使用&lt;/td&gt;
+&lt;td&gt;是否被删除&lt;/td&gt;
+&lt;td&gt;是否是 B+树的最小记录&lt;/td&gt;
+&lt;td&gt;当前记录对应的分组的记录数&lt;/td&gt;
+&lt;td&gt;当前记录在记录堆的位置信息&lt;/td&gt;
+&lt;td&gt;记录类型&lt;/td&gt;
+&lt;td&gt;下一条记录的相对位置&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h1 id=&#34;redundant&#34;&gt;Redundant&lt;/h1&gt;
+&lt;p&gt;Redundant 是 &lt;code&gt;MySQL 5.0&lt;/code&gt; 之前使用的一种行格式, 略.&lt;/p&gt;
+&lt;h1 id=&#34;dynamic&#34;&gt;Dynamic&lt;/h1&gt;
+&lt;p&gt;Dynamic 和 Compact 差不多, 是 MySQL 默认的行格式, 在处理行溢出时,它并不会像 Compact 存储前 768 byte,而是全部存在溢出页中&lt;/p&gt;
+&lt;h1 id=&#34;compressed&#34;&gt;Compressed&lt;/h1&gt;
+&lt;p&gt;Compressed 和 Dynamic 相比, Compressed 会采用压缩算法对页面进行压缩&lt;/p&gt;
+</description>
+        </item>
+        
+    </channel>
+</rss>

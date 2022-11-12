@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='从哪里加载? 从本地磁盘加载 (class 文件, jar 包, zip 包) 通过网络资源加载 从数据库中提取 class 文件 java 文件动态编译为 class 文件 一个类的生命周期 加载 -&amp;gt; 验证 -&amp;gt; 准备 -&amp;gt; 解析 -&amp;gt; 初始化 这里的几个阶段是按顺序开始(而不保证是按顺序进行的) 在这五个阶段中, 加载 验证 准备 初始化这四个阶段顺序是确定的, 而解析阶段则不一定,它在某些情况下可以在初始化阶段之后开始,这是为了支持 Java 语言的运行时绑定（也成为动态绑定或晚期绑定）。
+加载 在 java 中,一个 class 都是 ClassLoader 加载的, 加载时类加载的第一个阶段
+在这个阶段, JVM 把类读入内存 将这个字节流所代表的静态存储结构转化为方法区的运行时数据结构。
+加载阶段完成后, 虚拟机外部的二进制字节流就按照虚拟机所需的格式存储在方法区之中, 而且在 Java 堆中也创建一个 java.lang.Class 类的对象, 这样便可以通过该对象访问方法区中的这些数据
+验证 验证是为了确保 Class 文件是否是合法的,主要检验以下 4 个部分
+文件格式：是否以 0xCAFEBABE 开头,版本号是否正确, 常量池中的常量是否有不被支持的类型 元数据：对字节码描述的信息进行语义分析, 以保证其描述的信息符合 Java 语言规范的要求 字节码：通过数据流和控制流分析, 确保程序语义是合法的 符号引用：确保后续的解析阶段能正确执行。 准备 准备阶段会为类变量分配内存并设置类变量初始值的阶段, 这些内存都将在方法区中分配 值得注意的是: 在这里分配的都是默认的 0 值, 例如: 0, false, null, 并不是程序员所指定的值, 如果使用 final 修饰,那么才会在这里初始化为程序员指定的值'><title>JVM - 类的加载和双亲委派</title>
+
+<link rel='canonical' href='https://yanghaoyu.xyz/b/jvm-%E7%B1%BB%E7%9A%84%E5%8A%A0%E8%BD%BD%E5%92%8C%E5%8F%8C%E4%BA%B2%E5%A7%94%E6%B4%BE/'>
+
+<link rel="stylesheet" href="/scss/style.min.be7bdd4e56c8a6c3c4d30c70154e7694c74256238402d9fd178f53754c079396.css"><meta property='og:title' content='JVM - 类的加载和双亲委派'>
+<meta property='og:description' content='从哪里加载? 从本地磁盘加载 (class 文件, jar 包, zip 包) 通过网络资源加载 从数据库中提取 class 文件 java 文件动态编译为 class 文件 一个类的生命周期 加载 -&amp;gt; 验证 -&amp;gt; 准备 -&amp;gt; 解析 -&amp;gt; 初始化 这里的几个阶段是按顺序开始(而不保证是按顺序进行的) 在这五个阶段中, 加载 验证 准备 初始化这四个阶段顺序是确定的, 而解析阶段则不一定,它在某些情况下可以在初始化阶段之后开始,这是为了支持 Java 语言的运行时绑定（也成为动态绑定或晚期绑定）。
+加载 在 java 中,一个 class 都是 ClassLoader 加载的, 加载时类加载的第一个阶段
+在这个阶段, JVM 把类读入内存 将这个字节流所代表的静态存储结构转化为方法区的运行时数据结构。
+加载阶段完成后, 虚拟机外部的二进制字节流就按照虚拟机所需的格式存储在方法区之中, 而且在 Java 堆中也创建一个 java.lang.Class 类的对象, 这样便可以通过该对象访问方法区中的这些数据
+验证 验证是为了确保 Class 文件是否是合法的,主要检验以下 4 个部分
+文件格式：是否以 0xCAFEBABE 开头,版本号是否正确, 常量池中的常量是否有不被支持的类型 元数据：对字节码描述的信息进行语义分析, 以保证其描述的信息符合 Java 语言规范的要求 字节码：通过数据流和控制流分析, 确保程序语义是合法的 符号引用：确保后续的解析阶段能正确执行。 准备 准备阶段会为类变量分配内存并设置类变量初始值的阶段, 这些内存都将在方法区中分配 值得注意的是: 在这里分配的都是默认的 0 值, 例如: 0, false, null, 并不是程序员所指定的值, 如果使用 final 修饰,那么才会在这里初始化为程序员指定的值'>
+<meta property='og:url' content='https://yanghaoyu.xyz/b/jvm-%E7%B1%BB%E7%9A%84%E5%8A%A0%E8%BD%BD%E5%92%8C%E5%8F%8C%E4%BA%B2%E5%A7%94%E6%B4%BE/'>
+<meta property='og:site_name' content='Howie'>
+<meta property='og:type' content='article'><meta property='article:section' content='Blogs' /><meta property='article:tag' content='JVM' /><meta property='article:published_time' content='2022-04-18T00:00:00&#43;00:00'/><meta property='article:modified_time' content='2022-04-18T00:00:00&#43;00:00'/><meta property='og:image' content='https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/blog-hero-jvm-loadclass.png' />
+<meta name="twitter:title" content="JVM - 类的加载和双亲委派">
+<meta name="twitter:description" content="从哪里加载? 从本地磁盘加载 (class 文件, jar 包, zip 包) 通过网络资源加载 从数据库中提取 class 文件 java 文件动态编译为 class 文件 一个类的生命周期 加载 -&amp;gt; 验证 -&amp;gt; 准备 -&amp;gt; 解析 -&amp;gt; 初始化 这里的几个阶段是按顺序开始(而不保证是按顺序进行的) 在这五个阶段中, 加载 验证 准备 初始化这四个阶段顺序是确定的, 而解析阶段则不一定,它在某些情况下可以在初始化阶段之后开始,这是为了支持 Java 语言的运行时绑定（也成为动态绑定或晚期绑定）。
+加载 在 java 中,一个 class 都是 ClassLoader 加载的, 加载时类加载的第一个阶段
+在这个阶段, JVM 把类读入内存 将这个字节流所代表的静态存储结构转化为方法区的运行时数据结构。
+加载阶段完成后, 虚拟机外部的二进制字节流就按照虚拟机所需的格式存储在方法区之中, 而且在 Java 堆中也创建一个 java.lang.Class 类的对象, 这样便可以通过该对象访问方法区中的这些数据
+验证 验证是为了确保 Class 文件是否是合法的,主要检验以下 4 个部分
+文件格式：是否以 0xCAFEBABE 开头,版本号是否正确, 常量池中的常量是否有不被支持的类型 元数据：对字节码描述的信息进行语义分析, 以保证其描述的信息符合 Java 语言规范的要求 字节码：通过数据流和控制流分析, 确保程序语义是合法的 符号引用：确保后续的解析阶段能正确执行。 准备 准备阶段会为类变量分配内存并设置类变量初始值的阶段, 这些内存都将在方法区中分配 值得注意的是: 在这里分配的都是默认的 0 值, 例如: 0, false, null, 并不是程序员所指定的值, 如果使用 final 修饰,那么才会在这里初始化为程序员指定的值"><meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content='https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/blog-hero-jvm-loadclass.png' />
+    <link rel="shortcut icon" href="/img/favicon.ico" />
+
+  
+    </head>
+    <body class="
+    article-page
+    ">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex on-phone--column extended"><aside class="sidebar left-sidebar sticky ">
+    <button class="hamburger hamburger--spin" type="button" id="toggle-menu" aria-label="Toggle Menu">
+        <span class="hamburger-box">
+            <span class="hamburger-inner"></span>
+        </span>
+    </button>
+
+    <header>
+        
+            
+            <figure class="site-avatar">
+                <a href="/">
+                
+                    
+                    
+                    
+                        
+                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                            height="300" class="site-logo" loading="lazy" alt="Avatar">
+                    
+                
+                </a>
+                
+                    <span class="emoji">😜</span>
+                
+            </figure>
+            
+        
+        
+        <div class="site-meta">
+            <h1 class="site-name"><a href="/">Howie</a></h1>
+            <h2 class="site-description">Refactor World</h2>
+        </div>
+    </header><ol class="social-menu">
+            
+                <li>
+                    <a 
+                        href='https://github.com/howieyoung91'
+                        target="_blank"
+                        title="GitHub"
+                    >
+                        
+                        
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-brand-github" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+  <path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5" />
+</svg>
+                        
+                    </a>
+                </li>
+            
+                <li>
+                    <a 
+                        href='https://www.instagram.com/howieyoung824/'
+                        target="_blank"
+                        title="Instagram"
+                    >
+                        
+                        
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-brand-instagram" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <rect x="4" y="4" width="16" height="16" rx="4" />
+    <circle cx="12" cy="12" r="3" />
+    <line x1="16.5" y1="7.5" x2="16.5" y2="7.501" />
+  </svg>
+                        
+                    </a>
+                </li>
+            
+                <li>
+                    <a 
+                        href='mailto:ishowieyoung@icloud.com'
+                        target="_blank"
+                        title="Mail"
+                    >
+                        
+                        
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-mail" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <polyline points="3 7 12 13 21 7" />
+  </svg>
+                        
+                    </a>
+                </li>
+            
+        </ol><ol class="menu" id="main-menu">
+        
+        
+        
+
+        <li >
+            <a href='/tags/%E6%89%8B%E5%86%99spring' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-file-text" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+    <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+    <line x1="9" y1="9" x2="10" y2="9" />
+    <line x1="9" y1="13" x2="15" y2="13" />
+    <line x1="9" y1="17" x2="15" y2="17" />
+</svg>
+                
+                <span>Imitate Spring</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/tags/imitate-docker' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-file-text" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+    <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+    <line x1="9" y1="9" x2="10" y2="9" />
+    <line x1="9" y1="13" x2="15" y2="13" />
+    <line x1="9" y1="17" x2="15" y2="17" />
+</svg>
+                
+                <span>Imitate Docker</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/search/' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-search" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="10" cy="10" r="7" />
+  <line x1="21" y1="21" x2="15" y2="15" />
+</svg>
+
+
+
+                
+                <span>Search</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/archives/' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-archive" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <rect x="3" y="4" width="18" height="4" rx="2" />
+  <path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-10" />
+  <line x1="10" y1="12" x2="14" y2="12" />
+</svg>
+
+
+
+                
+                <span>Archives</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/about/' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-user" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="7" r="4" />
+  <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+</svg>
+
+
+
+                
+                <span>About</span>
+            </a>
+        </li>
+        
+
+        <div class="menu-bottom-section">
+            
+            
+                <li id="dark-mode-toggle">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="8" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-right" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="16" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <span>Dark Mode</span>
+                </li>
+            
+        </div>
+    </ol>
+</aside>
+<main class="main full-width">
+    <article class="has-image main-article">
+    <header class="article-header">
+        <div class="article-image">
+            <a href="/b/jvm-%E7%B1%BB%E7%9A%84%E5%8A%A0%E8%BD%BD%E5%92%8C%E5%8F%8C%E4%BA%B2%E5%A7%94%E6%B4%BE/">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/blog-hero-jvm-loadclass.png" loading="lazy" alt="Featured image of post JVM - 类的加载和双亲委派" />
+                
+            </a>
+        </div>
+    
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/java/" >
+                Java
+            </a>
+        
+        
+            <a href="/tags/jvm/" >
+                JVM
+            </a>
+        
+    </header>
+    
+
+    <div class="article-title-wrapper">
+        <h2 class="article-title">
+            <a href="/b/jvm-%E7%B1%BB%E7%9A%84%E5%8A%A0%E8%BD%BD%E5%92%8C%E5%8F%8C%E4%BA%B2%E5%A7%94%E6%B4%BE/">JVM - 类的加载和双亲委派</a>
+        </h2>
+    
+        
+    </div>
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Apr 18, 2022</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    2 minute read
+                </time>
+            </div>
+        
+    </footer>
+    
+
+    
+</div>
+</header>
+
+    <section class="article-content">
+    
+    
+    <h2 id="从哪里加载">从哪里加载?</h2>
+<ol>
+<li>从本地磁盘加载 (class 文件, jar 包, zip 包)</li>
+<li>通过网络资源加载</li>
+<li>从数据库中提取 class 文件</li>
+<li>java 文件动态编译为 class 文件</li>
+</ol>
+<h2 id="一个类的生命周期">一个类的生命周期</h2>
+<p><code>加载</code> -&gt; <code>验证</code> -&gt; <code>准备</code> -&gt; <code>解析</code> -&gt; <code>初始化</code>
+这里的几个阶段是按顺序开始(而不保证是按顺序进行的)
+在这五个阶段中, <code>加载</code> <code>验证</code> <code> 准备</code> <code>初始化</code>这四个阶段顺序是确定的, 而解析阶段则不一定,它在某些情况下可以在初始化阶段之后开始,这是为了支持 Java 语言的运行时绑定（也成为动态绑定或晚期绑定）。</p>
+<h3 id="加载">加载</h3>
+<p>在 java 中,一个 class 都是 <code>ClassLoader</code> 加载的, 加载时类加载的第一个阶段</p>
+<p>在这个阶段, JVM 把类读入内存
+将这个字节流所代表的静态存储结构转化为方法区的运行时数据结构。</p>
+<p>加载阶段完成后, 虚拟机外部的二进制字节流就按照虚拟机所需的格式存储在方法区之中,
+而且在 Java 堆中也创建一个 <code>java.lang.Class</code> 类的对象, 这样便可以通过该对象访问方法区中的这些数据</p>
+<h3 id="验证">验证</h3>
+<p>验证是为了确保 Class 文件是否是合法的,主要检验以下 4 个部分</p>
+<ol>
+<li>文件格式：是否以 <code>0xCAFEBABE</code> 开头,版本号是否正确, 常量池中的常量是否有不被支持的类型</li>
+<li>元数据：对字节码描述的信息进行语义分析, 以保证其描述的信息符合 Java 语言规范的要求</li>
+<li>字节码：通过数据流和控制流分析, 确保程序语义是合法的</li>
+<li>符号引用：确保后续的解析阶段能正确执行。</li>
+</ol>
+<h3 id="准备">准备</h3>
+<p>准备阶段会为类变量分配内存并设置类变量初始值的阶段, 这些内存都将在方法区中分配
+值得注意的是: 在这里分配的都是默认的 0 值, 例如: <code>0</code>, <code>false</code>, <code>null</code>, 并不是程序员所指定的值, 如果使用 final 修饰,那么才会在这里初始化为程序员指定的值</p>
+<ul>
+<li><code>public static int i = 1</code> 将被分配为 0</li>
+<li><code>public static final int j = 1</code> 将被分配为 1</li>
+</ul>
+<h3 id="解析">解析</h3>
+<p>解析阶段是虚拟机将常量池内的符号引用替换为直接引用的过程,
+解析动作主要针对类或接口、字段、类方法、接口方法、方法类型、方法句柄和调用点限定符 7 类符号引用进行</p>
+<h3 id="初始化">初始化</h3>
+<p>初始化,正式为类变量设置初始值, 也就是程序员所指定的值</p>
+<p><code>public static int i = 1</code> 将在此时被初始化为 1</p>
+<h4 id="初始化步骤">初始化步骤</h4>
+<ol>
+<li>假如这个类还没有被加载和连接, 则程序先加载并连接该类</li>
+<li>假如该类的直接父类还没有被初始化, 则先初始化其直接父类</li>
+<li>假如类中有初始化语句, 则系统依次执行这些初始化语句</li>
+</ol>
+<h4 id="初始化时机">初始化时机</h4>
+<p>只有当对类的主动使用的时候才会导致类的初始化, 主要包括:</p>
+<ol>
+<li>new Instance</li>
+<li>访问某个类或接口的静态变量, 或者对该静态变量赋值</li>
+<li>调用类的静态方法</li>
+<li>反射使用到此类</li>
+<li>初始化某个类的子类, 则其父类也会被初始化</li>
+<li>Java 虚拟机启动时被标明为启动类的类, 直接使用 <code>java</code> 命令来运行某个主类</li>
+</ol>
+<p>总之, 在第一次使用到时初始化</p>
+<h3 id="双亲委派机制">双亲委派机制</h3>
+<p>在 JDK 中内置了 3 种 ClassLoader</p>
+<ol>
+<li><code>BootstrapClassLoader</code></li>
+<li><code>ExtClassLoader</code></li>
+<li><code>AppClassLoader</code></li>
+</ol>
+<p><img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/jvm-classloader.png"
+	
+	
+	
+	loading="lazy"
+	
+		alt="class-loader.png"
+	
+	
+></p>
+<p>这三种类加载器主要的职责并不相同</p>
+<p><code>BootstrapClassLoader</code>, 主要负责加载 JDK 中的类( <code>%JDK_HOME%\jre\lib</code>下的类 ), 或被 <code>-Xbootclasspath</code> 参数指定的路径中的, 启动类加载器是无法被 Java 程序直接引用的</p>
+<p><code>ExtClassLoader</code>,主要负责加载 JDK 中内部实现的扩展类(<code>%JDK_HOME%\jre\lib\ext</code>下的类),该加载器由 <code>sun.misc.Launcher$ExtClassLoader </code>实现, 开发者可以直接使用扩展类加载器。</p>
+<p><code>AppClassLoader</code>, 主要负责程序中的类文件的加载, 该类加载器由 <code>sun.misc.Launcher$AppClassLoader</code> 来实现, 开发者可以直接使用该类加载器, 并且它是默认的类加载器。</p>
+<p>加载器在加载过程中, 先把类交由父类加载器进行加载, 父类加载器没找到才自身加载, 这就是双亲委派机制</p>
+<p>具体来讲就是以下规则:</p>
+<ol>
+<li>当 <code>AppClassLoader</code> 加载类时, 它并不会先自己加载这个类, 而是先把类加载请求委派给父加载器 <code>ExtClassLoader</code></li>
+<li>当 <code>ExtClassLoader</code> 加载类时, 它也不会首先自己去加载这个类, 而是把类加载请求委派给父加载器 <code>BootStrapClassLoader</code> 去完成</li>
+<li>若 <code>BootStrapClassLoader</code> 加载失败会使用 <code>ExtClassLoader</code> 来尝试加载</li>
+<li>若 <code>ExtClassLoader</code> 加载失败, 则会使用 <code>AppClassLoader</code> 来加载</li>
+<li>若 <code>AppClassLoader</code> 加载失败, 就报出异常 <code>ClassNotFoundException</code></li>
+</ol>
+<p>源码如下:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="line"><span class="cl"><span class="kd">protected</span> <span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">loadClass</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">resolve</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">ClassNotFoundException</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">synchronized</span> <span class="o">(</span><span class="n">getClassLoadingLock</span><span class="o">(</span><span class="n">name</span><span class="o">))</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// First, check if the class has already been loaded
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="c1">// 首先 判断是否被加载过
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">c</span> <span class="o">=</span> <span class="n">findLoadedClass</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="o">(</span><span class="n">c</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">            <span class="kt">long</span> <span class="n">t0</span> <span class="o">=</span> <span class="n">System</span><span class="o">.</span><span class="na">nanoTime</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">            <span class="k">try</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">                <span class="c1">// 让父加载器加载
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>                <span class="k">if</span> <span class="o">(</span><span class="n">parent</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">                    <span class="n">c</span> <span class="o">=</span> <span class="n">parent</span><span class="o">.</span><span class="na">loadClass</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="kc">false</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">                <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">                    <span class="c1">// 如果父加载器不存在
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>                    <span class="c1">// 就检查是否是由启动类加载器加载的类
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>                    <span class="n">c</span> <span class="o">=</span> <span class="n">findBootstrapClassOrNull</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">                <span class="o">}</span>
+</span></span><span class="line"><span class="cl">            <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">ClassNotFoundException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">                <span class="c1">// ClassNotFoundException thrown if class not found
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>                <span class="c1">// from the non-null parent class loader
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>            <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="o">(</span><span class="n">c</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">                <span class="c1">// If still not found, then invoke findClass in order
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>                <span class="c1">// to find the class.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>                <span class="kt">long</span> <span class="n">t1</span> <span class="o">=</span> <span class="n">System</span><span class="o">.</span><span class="na">nanoTime</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">                <span class="n">c</span> <span class="o">=</span> <span class="n">findClass</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">                <span class="c1">// this is the defining class loader; record the stats
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>                <span class="n">sun</span><span class="o">.</span><span class="na">misc</span><span class="o">.</span><span class="na">PerfCounter</span><span class="o">.</span><span class="na">getParentDelegationTime</span><span class="o">().</span><span class="na">addTime</span><span class="o">(</span><span class="n">t1</span> <span class="o">-</span> <span class="n">t0</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">                <span class="n">sun</span><span class="o">.</span><span class="na">misc</span><span class="o">.</span><span class="na">PerfCounter</span><span class="o">.</span><span class="na">getFindClassTime</span><span class="o">().</span><span class="na">addElapsedTimeFrom</span><span class="o">(</span><span class="n">t1</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">                <span class="n">sun</span><span class="o">.</span><span class="na">misc</span><span class="o">.</span><span class="na">PerfCounter</span><span class="o">.</span><span class="na">getFindClasses</span><span class="o">().</span><span class="na">increment</span><span class="o">();</span>
+</span></span><span class="line"><span class="cl">            <span class="o">}</span>
+</span></span><span class="line"><span class="cl">        <span class="o">}</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="o">(</span><span class="n">resolve</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">            <span class="n">resolveClass</span><span class="o">(</span><span class="n">c</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl">        <span class="o">}</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">c</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">private</span> <span class="n">Class</span><span class="o">&lt;?&gt;</span> <span class="n">findBootstrapClassOrNull</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="o">(!</span><span class="n">checkName</span><span class="o">(</span><span class="n">name</span><span class="o">))</span> <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">findBootstrapClass</span><span class="o">(</span><span class="n">name</span><span class="o">);</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span></code></pre></div><p>双亲委派最主要的好处就是: 防止了 JVM 中出现多份相同的字节码, 同时也保证了 JDK 基础类库的安全(自己定义的<code>java.lang.Object</code>并不会被加载)</p>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/jvm/">JVM</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>Licensed under CC BY-NC-SA 4.0</span>
+    </section>
+    </footer>
+
+
+    
+        <link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"integrity="sha384-RZU/ijkSsFbcmivfdRBQDtwuwVqK7GMOw6IMvKyeWL2K5UAlyp6WonmB8m7Jd0Hn"crossorigin="anonymous"
+            ><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.js"integrity="sha384-pK1WpvzWVBQiP0/GjnvRxV4mOb0oxFuyRxJlk6vVw146n3egcN5C925NCP7a7BY8"crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/contrib/auto-render.min.js"integrity="sha384-vZTG03m&#43;2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl"crossorigin="anonymous"
+                defer
+                >
+            </script><script>
+    window.addEventListener("DOMContentLoaded", () => {
+        renderMathInElement(document.querySelector(`.article-content`), {
+            delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "$", right: "$", display: false },
+                { left: "\\(", right: "\\)", display: false },
+                { left: "\\[", right: "\\]", display: true }
+            ]
+        });})
+</script>
+    
+</article>
+
+    
+
+    
+
+<aside class="related-contents--wrapper">
+    <h2 class="section-title">Related contents</h2>
+    <div class="related-contents">
+        <div class="flex article-list--tile">
+            
+                
+<article class="has-image">
+    <a href="/b/jvm-%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/gc.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/gc.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">JVM - 垃圾收集器</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="">
+    <a href="/b/jvm-happens-before-%E8%A7%84%E5%88%99/">
+        
+        
+
+        <div class="article-details">
+            <h2 class="article-title">JVM -  happens-before 规则</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/b/jvm-synchronized-%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/object-monitor.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/object-monitor.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">JVM - synchronized 实现原理</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="">
+    <a href="/b/jvm-gc%E7%AE%97%E6%B3%95/">
+        
+        
+
+        <div class="article-details">
+            <h2 class="article-title">JVM - GC算法</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/b/condition-%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/condition.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/condition.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Condition 源码阅读</h2>
+        </div>
+    </a>
+</article>
+            
+        </div>
+    </div>
+</aside>
+
+     
+    
+        
+    
+
+    <footer class="site-footer">
+    
+    <section class="copyright">
+        <div class="en"></div>
+        <div class="zh_cn"></div>
+        <div>
+            <a href="https://beian.miit.gov.cn/">蜀ICP备2021003636号</a>
+        </div>
+        <div class="cyber-security">
+            <img src="https://img.alicdn.com/tfs/TB1..50QpXXXXX7XpXXXXXXXXXX-40-40.png" alt="" /> 
+            <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51030202000144">川公网安备 51030202000144号</a>
+        </div>
+        <script>
+            document.querySelector(".copyright .en").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} Howie Young, All rights reserved.`
+            document.querySelector(".copyright .zh_cn").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} 杨浩宇，保留所有权利。`
+        </script>
+    </section>
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.11.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    <aside class="sidebar right-sidebar sticky">
+        
+            
+                
+    <section class="widget archives">
+        <div class="widget-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <line x1="5" y1="9" x2="19" y2="9" />
+  <line x1="5" y1="15" x2="19" y2="15" />
+  <line x1="11" y1="4" x2="7" y2="20" />
+  <line x1="17" y1="4" x2="13" y2="20" />
+</svg>
+
+
+
+        </div>
+        <h2 class="widget-title section-title">Table of contents</h2>
+        
+        <div class="widget--toc">
+            <nav id="TableOfContents">
+  <ol>
+    <li><a href="#从哪里加载">从哪里加载?</a></li>
+    <li><a href="#一个类的生命周期">一个类的生命周期</a>
+      <ol>
+        <li><a href="#加载">加载</a></li>
+        <li><a href="#验证">验证</a></li>
+        <li><a href="#准备">准备</a></li>
+        <li><a href="#解析">解析</a></li>
+        <li><a href="#初始化">初始化</a>
+          <ol>
+            <li><a href="#初始化步骤">初始化步骤</a></li>
+            <li><a href="#初始化时机">初始化时机</a></li>
+          </ol>
+        </li>
+        <li><a href="#双亲委派机制">双亲委派机制</a></li>
+      </ol>
+    </li>
+  </ol>
+</nav>
+        </div>
+    </section>
+
+            
+        
+
+        <section class="copyright">
+            <div class="en"></div>
+            <div class="zh_cn"></div>
+            <div>
+                <a href="https://beian.miit.gov.cn/">蜀ICP备2021003636号</a>
+            </div>
+            <div class="cyber-security">
+                <img src="https://img.alicdn.com/tfs/TB1..50QpXXXXX7XpXXXXXXXXXX-40-40.png" alt="" /> 
+                <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51030202000144">川公网安备 51030202000144号</a>
+            </div>
+            <script>
+                document.querySelector(".sidebar .copyright .en").innerHTML =
+                    `Copyright ©2021-${new Date().getFullYear()} Howie Young, All rights reserved.`
+                document.querySelector(".sidebar .copyright .zh_cn").innerHTML =
+                    `Copyright ©2021-${new Date().getFullYear()} 杨浩宇，保留所有权利。`
+            </script>
+        </section>
+    </aside>
+
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+</script>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Poppins&display=swap");
+   
+   
+   
+   
+   
+  @import url("https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@700&display=swap");
+   
+   
+  @import url('https://fonts.googleapis.com/css2?family=Fira+Code&display=swap');
+</style>
+
+
+
+
+
+
+
+
+
+<script src="https://cdn.jsdelivr.net/gh/zhixuan2333/gh-blog@v0.1.0/js/nprogress.min.js"
+    integrity="sha384-bHDlAEUFxsRI7JfULv3DTpL2IXbbgn4JHQJibgo5iiXSK6Iu8muwqHANhun74Cqg"
+    crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/zhixuan2333/gh-blog@v0.1.0/css/nprogress.css"
+    integrity="sha384-KJyhr2syt5+4M9Pz5dipCvTrtvOmLk/olWVdfhAp858UCa64Ia5GFpTN7+G4BWpE" crossorigin="anonymous" />
+<script>
+    NProgress.start();
+    document.addEventListener("readystatechange", () => {
+        if (document.readyState === "interactive") NProgress.inc(0.8);
+        if (document.readyState === "complete") NProgress.done();
+    });
+</script>
+    </body>
+
+
+</html>

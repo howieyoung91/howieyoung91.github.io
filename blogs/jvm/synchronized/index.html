@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content=' synchronized  可以保证方法或者代码块在运行时，被 synchronized 修饰的代码段是串行的、原子的，同时它也保证了可见性'><title>JVM - synchronized 实现原理</title>
+
+<link rel='canonical' href='https://yanghaoyu.xyz/blogs/jvm/synchronized/'>
+
+<link rel="stylesheet" href="/scss/style.min.3945db2248f78ad046039d38b878bb3f1e0db7bc00eb397adc55649b6270be98.css"><meta property='og:title' content='JVM - synchronized 实现原理'>
+<meta property='og:description' content=' synchronized  可以保证方法或者代码块在运行时，被 synchronized 修饰的代码段是串行的、原子的，同时它也保证了可见性'>
+<meta property='og:url' content='https://yanghaoyu.xyz/blogs/jvm/synchronized/'>
+<meta property='og:site_name' content='Howie'>
+<meta property='og:type' content='article'><meta property='article:section' content='Blogs' /><meta property='article:tag' content='并发' /><meta property='article:tag' content='JVM' /><meta property='article:published_time' content='2021-09-09T00:00:00&#43;00:00'/><meta property='article:modified_time' content='2021-09-09T00:00:00&#43;00:00'/><meta property='og:image' content='https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/object-monitor.png' />
+<meta name="twitter:title" content="JVM - synchronized 实现原理">
+<meta name="twitter:description" content=" synchronized  可以保证方法或者代码块在运行时，被 synchronized 修饰的代码段是串行的、原子的，同时它也保证了可见性"><meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content='https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/object-monitor.png' />
+    <link rel="shortcut icon" href="/img/favicon.ico" />
+
+    </head>
+    <body class="
+    article-page
+    ">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex on-phone--column extended"><aside class="sidebar left-sidebar sticky ">
+    <button class="hamburger hamburger--spin" type="button" id="toggle-menu" aria-label="切换菜单">
+        <span class="hamburger-box">
+            <span class="hamburger-inner"></span>
+        </span>
+    </button>
+
+    <header>
+        
+            
+            <figure class="site-avatar">
+                <a href="/">
+                
+                    
+                    
+                    
+                        
+                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                            height="300" class="site-logo" loading="lazy" alt="Avatar">
+                    
+                
+                </a>
+                
+            </figure>
+            
+        
+        
+        <div class="site-meta">
+            <h1 class="site-name"><a href="/">Howie</a></h1>
+            <h2 class="site-description">Refactor World</h2>
+        </div>
+    </header><ol class="menu" id="main-menu">
+        
+        
+        
+
+        <li >
+            <a href='/tags/%E6%89%8B%E5%86%99spring' >
+                
+                
+                
+                <span>手写Spring</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/tags/jdk' >
+                
+                
+                
+                <span>JDK</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/tags/jvm' >
+                
+                
+                
+                <span>JVM</span>
+            </a>
+        </li>
+        
+
+        <div class="menu-bottom-section">
+            
+            
+                <li id="dark-mode-toggle">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="8" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-right" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="16" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <span>暗色模式</span>
+                </li>
+            
+        </div>
+    </ol>
+</aside>
+<main class="main full-width">
+    <article class="has-image main-article">
+    <header class="article-header">
+        <div class="article-image">
+            <a href="/blogs/jvm/synchronized/">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/object-monitor.png" loading="lazy" alt="Featured image of post JVM - synchronized 实现原理" />
+                
+            </a>
+        </div>
+    
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/java/" >
+                Java
+            </a>
+        
+    </header>
+    
+
+    <div class="article-title-wrapper">
+        <h2 class="article-title">
+            <a href="/blogs/jvm/synchronized/">JVM - synchronized 实现原理</a>
+        </h2>
+    
+        
+        <h3 class="article-subtitle">
+             synchronized  可以保证方法或者代码块在运行时，被 synchronized 修饰的代码段是串行的、原子的，同时它也保证了可见性
+        </h3>
+        
+    </div>
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Sep 09, 2021</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    阅读时长: 1 分钟
+                </time>
+            </div>
+        
+    </footer>
+    
+
+    
+</div>
+</header>
+
+    <section class="article-content">
+    
+    
+    <p><img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/object-monitor.png"
+	
+	
+	
+	loading="lazy"
+	
+		alt="alt"
+	
+	
+></p>
+<!-- more -->
+<h2 id="对象头monitor"><code>对象头</code>,<code>Monitor</code></h2>
+<p>在 JVM 中，对象在内存中的布局分为三块区域：</p>
+<ol>
+<li>对象头</li>
+<li>实例数据</li>
+<li>对齐填充</li>
+</ol>
+<p>如图所示</p>
+<p><img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/object-header.png"
+	
+	
+	
+	loading="lazy"
+	
+		alt="object.png"
+	
+	
+></p>
+<p>其中对象头是实现 synchronized 的基础,对象头分为两部分 <code>Mark Word</code>, <code>Klass Pointer</code>, <code>Mark Word</code> 存储对象的 hashCode、锁信息或分代年龄或 GC 标志等信息,<code>Klass Pointer</code>指向该类的 Class 对象</p>
+<p>下表是 Mark Word 的具体信息(64 位)</p>
+<h2 id="synchronized-的锁升级"><code>synchronized</code> 的锁升级</h2>
+<p>在 JDK6 之后, synchronized 底层的锁有了 4 种状态 <code>无锁</code>,<code>偏向锁</code>,<code>轻量级锁</code>,<code>重量级锁</code>,每一种状态在 <code>Mark Word</code> 中均有记录</p>
+<p>每一个锁都对应一个 monitor 对象(在 HotSpot 中由 ObjectMonitor 实现的)。每个对象都存在着一个 monitor 与之关联，对象与其 monitor 之间的关系有存在多种实现方式，如 monitor 可以与对象一起创建销毁或当线程试图获取对象锁时自动生成，但当一个 monitor 被某个线程持有后，它便处于锁定状态。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">ObjectMonitor</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">_header</span>       <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="n">_count</span>        <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="c1">// 计数器
+</span><span class="c1"></span>    <span class="n">_waiters</span>      <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">_recursions</span>   <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">_object</span>       <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="n">_owner</span>        <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="n">_WaitSet</span>      <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+    <span class="n">_WaitSetLock</span>  <span class="o">=</span> <span class="mi">0</span> <span class="p">;</span>
+    <span class="n">_Responsible</span>  <span class="o">=</span> <span class="nb">NULL</span> <span class="p">;</span>
+    <span class="n">_succ</span>         <span class="o">=</span> <span class="nb">NULL</span> <span class="p">;</span>
+    <span class="n">_cxq</span>          <span class="o">=</span> <span class="nb">NULL</span> <span class="p">;</span>
+    <span class="n">FreeNext</span>      <span class="o">=</span> <span class="nb">NULL</span> <span class="p">;</span>
+    <span class="n">_EntryList</span>    <span class="o">=</span> <span class="nb">NULL</span> <span class="p">;</span>
+    <span class="n">_SpinFreq</span>     <span class="o">=</span> <span class="mi">0</span> <span class="p">;</span>
+    <span class="n">_SpinClock</span>    <span class="o">=</span> <span class="mi">0</span> <span class="p">;</span>
+    <span class="n">OwnerIsThread</span> <span class="o">=</span> <span class="mi">0</span> <span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><ol>
+<li><code>_WaitSet</code> :储存处于 wait 状态的线程</li>
+<li><code>_EntryList</code>:保存用于储存等待锁的线程</li>
+<li><code>_owner</code> :指向持有 ObjectMonitor 对象的线程</li>
+</ol>
+<p>当多个线程尝试进入临界区时, 首先会进入<code>_EntryList</code> 集合,
+当线程获取到对象的 monitor 后, 把 monitor 中的 <code>_owner</code> 指向当前线程, 同时计数器 count++
+当线程调用 <code>wait</code> 方法, owner 变量恢复为 <code>NULL</code>,count&ndash;, 表明当前线程释放 <code>monitor</code>,随后该线程进入 <code>_WaitSet</code> 集合中等待
+如果当前线程执行完毕也会释放 monitor</p>
+<p><img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/object-monitor.png"
+	
+	
+	
+	loading="lazy"
+	
+		alt="alt"
+	
+	
+></p>
+<h2 id="synchronized-的锁膨胀"><code>synchronized</code> 的锁膨胀</h2>
+<p>synchronized 底层的锁有了 4 种状态 <code>无锁</code>-&gt;<code>偏向锁</code>-&gt;<code>轻量级锁</code>-&gt;<code>重量级锁</code>,膨胀方向不可逆</p>
+<p><img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/lock.png"
+	
+	
+	
+	loading="lazy"
+	
+		alt="lock"
+	
+	
+></p>
+<h3 id="偏向锁"><code>偏向锁</code></h3>
+<p>如果一个线程获得了锁，那么锁就进入偏向模式，此时 <code>Mark Word</code> 的结构也就变为偏向锁结构，
+当该线程再次请求锁时,
+只需要检查 <code>Mark Word</code> 的锁标记位为偏向锁和当前线程 ID 是否等于 <code>Mark Word</code> 的 <code>ThreadID</code>
+如果相等, 则当前线程获取成功,如果获取不成功, 表明这不是原来的进程, 则升级为<code>轻量级锁</code></p>
+<h3 id="轻量级锁"><code>轻量级锁</code></h3>
+<h4 id="加锁">加锁</h4>
+<p>当锁未被锁定,虚拟机现在线程的栈帧中创建<code>Displaced Lock Record</code>,用于储存锁目前线程的<code>Mark Word</code>, 然后虚拟机尝试使用<code>CAS</code>把锁对象的<code>Mark Word</code>指向<code>Displaced Lock Record</code>,然后把锁标示位改为 00,这就表示该线程拥有了这个锁. 如果 CAS 失败,那么虚拟机会检测对象的<code>Mark Word</code>是否指向当前线程的栈帧,如果没有则表明锁已经被其他线程抢占了(如果有两条以上的线程抢锁的话,膨胀为重量级锁)</p>
+<p><img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/displaced-lock-record.png"
+	
+	
+	
+	loading="lazy"
+	
+		alt="Displaced-Lock-Record.png"
+	
+	
+></p>
+<h4 id="解锁">解锁</h4>
+<p>使用 CAS 把<code>Mark Word</code>替换回来,如果替换失败的话,表明其他线程在抢锁,需要在释放锁的同时唤醒被阻塞的线程</p>
+<h3 id="重量级锁"><code>重量级锁</code></h3>
+<p><code>重量级锁</code>是由轻量级锁升级而来，当同一时间有多个线程竞争锁时，锁就会被升级成重量级锁，此时其申请锁带来的开销也就变大。</p>
+<h3 id="锁消除"><code>锁消除</code></h3>
+<p><code>锁消除</code>是虚拟机另外一种锁的优化，这种优化更彻底，在 JIT 编译时，对运行上下文进行扫描，去除不可能存在竞争的锁</p>
+<h3 id="锁粗化"><code>锁粗化</code></h3>
+<p><code>锁粗化</code>是虚拟机对另一种极端情况的优化处理，通过扩大锁的范围，避免反复加锁和释放锁。</p>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/%E5%B9%B6%E5%8F%91/">并发</a>
+        
+            <a href="/tags/jvm/">JVM</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>Licensed under CC BY-NC-SA 4.0</span>
+    </section>
+    </footer>
+
+
+    
+        <link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"integrity="sha384-RZU/ijkSsFbcmivfdRBQDtwuwVqK7GMOw6IMvKyeWL2K5UAlyp6WonmB8m7Jd0Hn"crossorigin="anonymous"
+            ><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.js"integrity="sha384-pK1WpvzWVBQiP0/GjnvRxV4mOb0oxFuyRxJlk6vVw146n3egcN5C925NCP7a7BY8"crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/contrib/auto-render.min.js"integrity="sha384-vZTG03m&#43;2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl"crossorigin="anonymous"
+                defer
+                >
+            </script><script>
+    window.addEventListener("DOMContentLoaded", () => {
+        renderMathInElement(document.querySelector(`.article-content`), {
+            delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "$", right: "$", display: false },
+                { left: "\\(", right: "\\)", display: false },
+                { left: "\\[", right: "\\]", display: true }
+            ]
+        });})
+</script>
+    
+</article>
+
+    
+
+    
+
+<aside class="related-contents--wrapper">
+    <h2 class="section-title">相关文章</h2>
+    <div class="related-contents">
+        <div class="flex article-list--tile">
+            
+                
+<article class="">
+    <a href="/blogs/jvm/happen-before/">
+        
+        
+
+        <div class="article-details">
+            <h2 class="article-title">JVM -  happens-before 规则</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/blogs/jvm/java-%E7%B1%BB%E7%9A%84%E5%8A%A0%E8%BD%BD/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/blog-hero-jvm-loadclass.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/blog-hero-jvm-loadclass.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">JVM - 类的加载和双亲委派</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/blogs/jvm/gc/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/gc.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/gc.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">JVM - 垃圾收集器</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/blogs/jdk/juc/condition/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/condition.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/condition.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">Condition 源码阅读</h2>
+        </div>
+    </a>
+</article>
+            
+                
+<article class="has-image">
+    <a href="/blogs/jdk/juc/abstractqueuedsynchronizer/">
+        
+        
+            <div class="article-image">
+                
+                    <img src="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/aqs.png" loading="lazy" data-key="" data-hash="https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/aqs.png"/>
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">AbstractQueuedSynchronizer 源码阅读</h2>
+        </div>
+    </a>
+</article>
+            
+        </div>
+    </div>
+</aside>
+
+     
+    
+        
+    
+
+    <footer class="site-footer">
+    
+    <section class="copyright">
+        <div class="en"></div>
+        <div class="zh_cn"></div>
+        <div>
+            <a href="https://beian.miit.gov.cn/">蜀ICP备2021003636号</a>
+        </div>
+        <div class="cyber-security">
+            <img src="https://img.alicdn.com/tfs/TB1..50QpXXXXX7XpXXXXXXXXXX-40-40.png" alt="" /> 
+            <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51030202000144">川公网安备 51030202000144号</a>
+        </div>
+        <script>
+            document.querySelector(".copyright .en").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} Howie Young, All rights reserved.`
+            document.querySelector(".copyright .zh_cn").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} 杨浩宇，保留所有权利。`
+        </script>
+    </section>
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        主题 <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.11.0">Stack</a></b> 由 <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a> 设计
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+</script>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Poppins&display=swap");
+   
+   
+   
+   
+   
+  @import url("https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@700&display=swap");
+   
+   
+  @import url('https://fonts.googleapis.com/css2?family=Fira+Code&display=swap');
+</style>
+
+
+
+
+
+
+
+    </body>
+</html>
