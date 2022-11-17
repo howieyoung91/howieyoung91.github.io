@@ -7,7 +7,7 @@ public interface Resource { InputStream getInputStream() throws IOException; } F
 
 <link rel='canonical' href='https://yanghaoyu.xyz/tags/docs/flora/ioc/3.resource/'>
 
-<link rel="stylesheet" href="/scss/style.min.be7bdd4e56c8a6c3c4d30c70154e7694c74256238402d9fd178f53754c079396.css"><meta property='og:title' content='Resource'>
+<link rel="stylesheet" href="/scss/style.min.c5e3a0e1ef9e4132087107b323b39421c5a9148668da197430042f404845d381.css"><meta property='og:title' content='Resource'>
 <meta property='og:description' content='Resource 代表了一个文件资源
 本地资源 FileSystemResource ClasspathResource 网络资源 UrlResource Resource#getInputStream可以获取这个资源输入流
 public interface Resource { InputStream getInputStream() throws IOException; } FileSystemResource 文件系统的一个资源 public class FileSystemResource implements Resource { private final File file; private final String path; public FileSystemResource(File file) { this.file = file; this.path = file.getPath(); } public FileSystemResource(String path) { this.file = new File(path); this.path = path; } @Override public InputStream getInputStream() throws IOException { return new BufferedInputStream(new FileInputStream(this.file)); } public final String getPath() { return this.'>
@@ -692,6 +692,8 @@ public interface Resource { InputStream getInputStream() throws IOException; } F
         if (document.readyState === "complete") NProgress.done();
     });
 </script>
+
+
     </body>
 
 

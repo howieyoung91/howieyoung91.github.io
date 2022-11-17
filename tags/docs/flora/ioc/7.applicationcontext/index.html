@@ -10,7 +10,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader i
 
 <link rel='canonical' href='https://yanghaoyu.xyz/tags/docs/flora/ioc/7.applicationcontext/'>
 
-<link rel="stylesheet" href="/scss/style.min.be7bdd4e56c8a6c3c4d30c70154e7694c74256238402d9fd178f53754c079396.css"><meta property='og:title' content='ApplicationContext'>
+<link rel="stylesheet" href="/scss/style.min.c5e3a0e1ef9e4132087107b323b39421c5a9148668da197430042f404845d381.css"><meta property='og:title' content='ApplicationContext'>
 <meta property='og:description' content='ApplicationContext 整合了 BeanFactory 的一系列操作, 给用户提供了简单的接口
 public interface ApplicationContext extends ListableBeanFactory, ResourceLoader, ApplicationEventPublisher { } ApplicationContext通过继承ListableBeanFactory来增强BeanFactory,它内置一个BeanFactory,所有方法全部转发到内部的 BeanFactory,同时实现ResoureceLoader添加加载资源的能力.
 ConfigurationApplicationContext ConfigurationApplicationContext 为 ApplicationContext 添加了更多方法, 最重要的就是refresh,这个方法负责了Resourece的读取,BeanDefinition的读入和增强,Bean的创建, 并且会在容器被创建时调用
@@ -985,6 +985,8 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader i
         if (document.readyState === "complete") NProgress.done();
     });
 </script>
+
+
     </body>
 
 

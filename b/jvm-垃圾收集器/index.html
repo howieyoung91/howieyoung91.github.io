@@ -11,7 +11,7 @@ GC 自适应的调节策略： Parallel Scavenge 收集器有一个参数-XX:&#4
 
 <link rel='canonical' href='https://yanghaoyu.xyz/b/jvm-%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8/'>
 
-<link rel="stylesheet" href="/scss/style.min.be7bdd4e56c8a6c3c4d30c70154e7694c74256238402d9fd178f53754c079396.css"><meta property='og:title' content='JVM - 垃圾收集器'>
+<link rel="stylesheet" href="/scss/style.min.c5e3a0e1ef9e4132087107b323b39421c5a9148668da197430042f404845d381.css"><meta property='og:title' content='JVM - 垃圾收集器'>
 <meta property='og:description' content='GC (Garbage Collectors), 垃圾收集器. 是对 GC 算法的具体实现, 在 JVM 主要有 7 中收集器,Serial,Serial Old, ParNew, Parallel Scavenge,Parallel Old,CMS,G1
 Serial 特性 Serial 是一个采用复制算法的单线程垃圾收集器, 这意味着 Serial 进行工作时,会暂停所有的用户正常工作的线程(Stop the World),效率高,
 应用场景 主要用于Young Gen的回收, 是 JVM 运行在 Client 模式下的默认新生代回收器
@@ -869,6 +869,8 @@ Parallel Scavenge 收集器有一个参数<code>-XX:+UseAdaptiveSizePolicy</code
         if (document.readyState === "complete") NProgress.done();
     });
 </script>
+
+
     </body>
 
 

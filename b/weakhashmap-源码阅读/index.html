@@ -5,7 +5,7 @@
 
 <link rel='canonical' href='https://yanghaoyu.xyz/b/weakhashmap-%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/'>
 
-<link rel="stylesheet" href="/scss/style.min.be7bdd4e56c8a6c3c4d30c70154e7694c74256238402d9fd178f53754c079396.css"><meta property='og:title' content='WeakHashMap 源码阅读'>
+<link rel="stylesheet" href="/scss/style.min.c5e3a0e1ef9e4132087107b323b39421c5a9148668da197430042f404845d381.css"><meta property='og:title' content='WeakHashMap 源码阅读'>
 <meta property='og:description' content='WeakHashMap 底层采用 数组&#43;链表 实现(和 JDK1.7 一样), WeakHashMap.Entry 直接继承于 WeakReference,这就表明在 gc 是 Entry 是可以被清理掉的(事实上清理的是 Entry 中的 key),在清理之后把 Entry 放入一个 ReferenceQueue,在特定的方法中,遍历该队列清除已经被 gc 掉的 Entry 的 value,同时将他们从 WeakHashMap 中淘汰掉, 基于此特性, 可以用 WeakHashMap 来实现一个缓存,同时需要注意 key 的类型最好不用基本数据类型'>
 <meta property='og:url' content='https://yanghaoyu.xyz/b/weakhashmap-%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB/'>
 <meta property='og:site_name' content='Howie'>
@@ -874,6 +874,8 @@
         if (document.readyState === "complete") NProgress.done();
     });
 </script>
+
+
     </body>
 
 

@@ -7,11 +7,11 @@
         <generator>Hugo -- gohugo.io</generator>
         <language>en-us</language>
         <lastBuildDate>Thu, 27 Oct 2022 00:00:00 +0000</lastBuildDate><atom:link href="https://yanghaoyu.xyz/tags/refactoring/index.xml" rel="self" type="application/rss+xml" /><item>
-        <title>代码的坏味道 - 1. Mysterious Name</title>
-        <link>https://yanghaoyu.xyz/b/mysterious-name/</link>
+        <title>「重构」代码的坏味道 - 1. Mysterious Name</title>
+        <link>https://yanghaoyu.xyz/b/refactor-mysterious-name/</link>
         <pubDate>Fri, 21 Oct 2022 00:00:00 +0000</pubDate>
         
-        <guid>https://yanghaoyu.xyz/b/mysterious-name/</guid>
+        <guid>https://yanghaoyu.xyz/b/refactor-mysterious-name/</guid>
         <description>&lt;p&gt;改变名字可能是最常用的重构手法，包括：&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;改变函数声明&lt;/li&gt;
@@ -22,11 +22,11 @@
 </description>
         </item>
         <item>
-        <title>代码的坏味道 - 2. Duplicated Code</title>
-        <link>https://yanghaoyu.xyz/b/duplicated-code/</link>
+        <title>「重构」代码的坏味道 - 2. Duplicated Code</title>
+        <link>https://yanghaoyu.xyz/b/refactor-duplicated-code/</link>
         <pubDate>Sat, 22 Oct 2022 00:00:00 +0000</pubDate>
         
-        <guid>https://yanghaoyu.xyz/b/duplicated-code/</guid>
+        <guid>https://yanghaoyu.xyz/b/refactor-duplicated-code/</guid>
         <description>&lt;p&gt;为什么要合并重复代码呢？因为一旦有重复代码存在，那就表明你阅读这些代码就要加倍小心，注意细微差异。&lt;/p&gt;
 &lt;p&gt;最单纯的重复代码是：同一个类的两个函数含有相同的表达式。
 针对这种情况，你需要做的就是采用 &lt;strong&gt;&lt;em&gt;提炼函数&lt;/em&gt;&lt;/strong&gt; 来抽取出重复代码。&lt;/p&gt;
@@ -35,32 +35,32 @@
 </description>
         </item>
         <item>
-        <title>代码的坏味道 - 3. Long Function</title>
-        <link>https://yanghaoyu.xyz/b/long-function/</link>
+        <title>「重构」代码的坏味道 - 3. Long Function</title>
+        <link>https://yanghaoyu.xyz/b/refactor-long-function/</link>
         <pubDate>Sun, 23 Oct 2022 00:00:00 +0000</pubDate>
         
-        <guid>https://yanghaoyu.xyz/b/long-function/</guid>
+        <guid>https://yanghaoyu.xyz/b/refactor-long-function/</guid>
         <description>&lt;p&gt;尽可能地分解函数，哪怕替换后的函数调用动作比函数自身还长。&lt;br&gt;
 这是因为，关键并不在于函数的长度，而是在于函数能够「做什么」和「如何做」之间的语义差距。&lt;/p&gt;
 </description>
         </item>
         <item>
-        <title>代码的坏味道 - 4. Long Parameter List</title>
-        <link>https://yanghaoyu.xyz/b/long-parameter-list/</link>
+        <title>「重构」代码的坏味道 - 4. Long Parameter List</title>
+        <link>https://yanghaoyu.xyz/b/refactor-long-parameter-list/</link>
         <pubDate>Mon, 24 Oct 2022 00:00:00 +0000</pubDate>
         
-        <guid>https://yanghaoyu.xyz/b/long-parameter-list/</guid>
+        <guid>https://yanghaoyu.xyz/b/refactor-long-parameter-list/</guid>
         <description>&lt;p&gt;如果可以向某个参数发起查询而获得另外一个参数的值，那么就可以 &lt;strong&gt;&lt;em&gt;以查询取代传参&lt;/em&gt;&lt;/strong&gt; 去掉参数&lt;br&gt;
 如果你发现你正在从现有的数据结构中抽取出很多数据项，那么可以考虑 &lt;strong&gt;&lt;em&gt;保持对象完整&lt;/em&gt;&lt;/strong&gt; 直接传入原来的数据结构&lt;br&gt;
 如果某几项参数总是同时出现，可以考虑 &lt;strong&gt;&lt;em&gt;引入参数对象&lt;/em&gt;&lt;/strong&gt;&lt;/p&gt;
 </description>
         </item>
         <item>
-        <title>代码的坏味道 - 5. Global Data</title>
-        <link>https://yanghaoyu.xyz/b/global-data/</link>
+        <title>「重构」代码的坏味道 - 5. Global Data</title>
+        <link>https://yanghaoyu.xyz/b/refactor-global-data/</link>
         <pubDate>Thu, 27 Oct 2022 00:00:00 +0000</pubDate>
         
-        <guid>https://yanghaoyu.xyz/b/global-data/</guid>
+        <guid>https://yanghaoyu.xyz/b/refactor-global-data/</guid>
         <description>&lt;p&gt;全局变量很容易造成很多诡异的 Bug，因为在代码库的任何一个地方都可以修改他。&lt;br&gt;
 首先的防御手段就是 &lt;code&gt;封装变量&lt;/code&gt;，每当我们看到可能被各处代码污染的数据，就应该考虑封装这个变量，控制对这个变量的访问。&lt;br&gt;
 如果可以，应该尽可能地保持全局变量不被修改。&lt;/p&gt;

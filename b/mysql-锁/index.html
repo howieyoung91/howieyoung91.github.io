@@ -13,7 +13,7 @@ IS 与表级读锁兼容，与表级写锁不兼容 IX 与表级读锁和表级�
 
 <link rel='canonical' href='https://yanghaoyu.xyz/b/mysql-%E9%94%81/'>
 
-<link rel="stylesheet" href="/scss/style.min.be7bdd4e56c8a6c3c4d30c70154e7694c74256238402d9fd178f53754c079396.css"><meta property='og:title' content='MySQL - 锁'>
+<link rel="stylesheet" href="/scss/style.min.c5e3a0e1ef9e4132087107b323b39421c5a9148668da197430042f404845d381.css"><meta property='og:title' content='MySQL - 锁'>
 <meta property='og:description' content='全局锁 全局锁是对整个数据库实例加锁，主要应用在做全库的逻辑备份。 如果在主库上做备份，那么备份期间主库都都无法执行更新操作，如果在从库上做备份，那么从库无法执行主库同步过来的 binlog，造成了主从同步延迟
 使用 flush tables with read lock 即可对整个数据库实例加锁，那么其他客户端执行更新操作将会被阻塞
 表级锁 1. 表锁 表锁对整张表加锁，开销小，加锁快，但是锁定力度大，很容易发生锁冲突，并发度低，MyISAM 和 InnoDB 都支持表锁 表锁分为读锁和写锁,读锁只兼容读锁，写锁则与写锁和读锁都互斥
@@ -827,6 +827,8 @@ IS 与表级读锁兼容，与表级写锁不兼容 IX 与表级读锁和表级�
         if (document.readyState === "complete") NProgress.done();
     });
 </script>
+
+
     </body>
 
 

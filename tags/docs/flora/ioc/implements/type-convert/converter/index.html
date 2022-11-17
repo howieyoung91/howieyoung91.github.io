@@ -5,7 +5,7 @@
 
 <link rel='canonical' href='https://yanghaoyu.xyz/tags/docs/flora/ioc/implements/type-convert/converter/'>
 
-<link rel="stylesheet" href="/scss/style.min.be7bdd4e56c8a6c3c4d30c70154e7694c74256238402d9fd178f53754c079396.css"><meta property='og:title' content='Converter'>
+<link rel="stylesheet" href="/scss/style.min.c5e3a0e1ef9e4132087107b323b39421c5a9148668da197430042f404845d381.css"><meta property='og:title' content='Converter'>
 <meta property='og:description' content='@FunctionalInterface public interface Converter&amp;lt;S, T&amp;gt; { // assert source != null T convert(S source); default &amp;lt;T1&amp;gt; Converter&amp;lt;S, T1&amp;gt; andThen(Converter&amp;lt;? super T, ? extends T1&amp;gt; after) { Objects.requireNonNull(after, &amp;#34;After Converter must not be null!&amp;#34;); return (S s) -&amp;gt; { T initialResult = convert(s); return (initialResult != null ? after.convert(initialResult) : null); }; } } '>
 <meta property='og:url' content='https://yanghaoyu.xyz/tags/docs/flora/ioc/implements/type-convert/converter/'>
 <meta property='og:site_name' content='Howie'>
@@ -551,6 +551,8 @@
         if (document.readyState === "complete") NProgress.done();
     });
 </script>
+
+
     </body>
 
 

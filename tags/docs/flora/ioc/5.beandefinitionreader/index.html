@@ -7,7 +7,7 @@ public interface BeanDefinitionFileReader extends BeanDefinitionReader { Resourc
 
 <link rel='canonical' href='https://yanghaoyu.xyz/tags/docs/flora/ioc/5.beandefinitionreader/'>
 
-<link rel="stylesheet" href="/scss/style.min.be7bdd4e56c8a6c3c4d30c70154e7694c74256238402d9fd178f53754c079396.css"><meta property='og:title' content='BeanDefinitionReader'>
+<link rel="stylesheet" href="/scss/style.min.c5e3a0e1ef9e4132087107b323b39421c5a9148668da197430042f404845d381.css"><meta property='og:title' content='BeanDefinitionReader'>
 <meta property='og:description' content='BeanDefinitionReader 可以从 Resource 中读入 BeanDefinition,并把 BeanDefinition 注册到 BeanRegistry 中
 public interface BeanDefinitionReader { BeanDefinitionRegistry getRegistry(); } AbstractBeanDefinitionReader public abstract class AbstractBeanDefinitionReader implements BeanDefinitionReader { private final BeanDefinitionRegistry registry; public AbstractBeanDefinitionReader(BeanDefinitionRegistry registry) { this.registry = registry; } @Override public BeanDefinitionRegistry getRegistry() { return registry; } } BeanDefinitionFileReader BeanDefinitionFileReader 扩展 BeanDefinitionReader,新增从 Resource加载 BeanDefinition,表示有从文件读入BeanDefinition的能力
 public interface BeanDefinitionFileReader extends BeanDefinitionReader { ResourceLoader getResourceLoader(); void loadBeanDefinitions(Resource resource) throws BeansException, IOException, ClassNotFoundException; void loadBeanDefinitions(Resource... resources) throws BeansException, IOException; void loadBeanDefinitions(String location) throws BeansException, IOException; void loadBeanDefinitions(String.'>
@@ -851,6 +851,8 @@ public interface BeanDefinitionFileReader extends BeanDefinitionReader { Resourc
         if (document.readyState === "complete") NProgress.done();
     });
 </script>
+
+
     </body>
 
 

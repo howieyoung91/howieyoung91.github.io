@@ -7,7 +7,7 @@ public class ConversionServiceFactoryBean implements FactoryBean&amp;lt;Conversi
 
 <link rel='canonical' href='https://yanghaoyu.xyz/tags/docs/flora/ioc/implements/type-convert/conversionservicefactorybean/'>
 
-<link rel="stylesheet" href="/scss/style.min.be7bdd4e56c8a6c3c4d30c70154e7694c74256238402d9fd178f53754c079396.css"><meta property='og:title' content='ConversionServiceFactoryBean'>
+<link rel="stylesheet" href="/scss/style.min.c5e3a0e1ef9e4132087107b323b39421c5a9148668da197430042f404845d381.css"><meta property='og:title' content='ConversionServiceFactoryBean'>
 <meta property='og:description' content='ConversionServiceFactoryBean 生成一个ConversionService,向 BeanFactory 提供类型转换服务
 它实现了 InitializingBean 接口,在初始化时扫描 BeanDefinition 如果发现是 Converter GenericConverter ConverterFactory放入 ConversionService
 public class ConversionServiceFactoryBean implements FactoryBean&amp;lt;ConversionService&amp;gt;, InitializingBean, BeanFactoryAware { private static final Logger LOGGER = LoggerFactory.getLogger(ConversionServiceFactoryBean.class); private ConfigurableListableBeanFactory beanFactory; private GenericConversionService conversionService; @Override public ConversionService getObject() throws Exception { return conversionService; } @Override public Class&amp;lt;?&amp;gt; getObjectType() { return GenericConversionService.class; } @Override public boolean isSingleton() { return true; } @Override public void afterPropertiesSet() { this.conversionService = new DefaultConversionService(); registerConverters(); } private void registerConverters() { String[] beanNames = beanFactory.'>
@@ -634,6 +634,8 @@ public class ConversionServiceFactoryBean implements FactoryBean&amp;lt;Conversi
         if (document.readyState === "complete") NProgress.done();
     });
 </script>
+
+
     </body>
 
 

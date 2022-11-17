@@ -10,7 +10,7 @@
 
 <link rel='canonical' href='https://yanghaoyu.xyz/b/jvm-%E7%B1%BB%E7%9A%84%E5%8A%A0%E8%BD%BD%E5%92%8C%E5%8F%8C%E4%BA%B2%E5%A7%94%E6%B4%BE/'>
 
-<link rel="stylesheet" href="/scss/style.min.be7bdd4e56c8a6c3c4d30c70154e7694c74256238402d9fd178f53754c079396.css"><meta property='og:title' content='JVM - 类的加载和双亲委派'>
+<link rel="stylesheet" href="/scss/style.min.c5e3a0e1ef9e4132087107b323b39421c5a9148668da197430042f404845d381.css"><meta property='og:title' content='JVM - 类的加载和双亲委派'>
 <meta property='og:description' content='从哪里加载? 从本地磁盘加载 (class 文件, jar 包, zip 包) 通过网络资源加载 从数据库中提取 class 文件 java 文件动态编译为 class 文件 一个类的生命周期 加载 -&amp;gt; 验证 -&amp;gt; 准备 -&amp;gt; 解析 -&amp;gt; 初始化 这里的几个阶段是按顺序开始(而不保证是按顺序进行的) 在这五个阶段中, 加载 验证 准备 初始化这四个阶段顺序是确定的, 而解析阶段则不一定,它在某些情况下可以在初始化阶段之后开始,这是为了支持 Java 语言的运行时绑定（也成为动态绑定或晚期绑定）。
 加载 在 java 中,一个 class 都是 ClassLoader 加载的, 加载时类加载的第一个阶段
 在这个阶段, JVM 把类读入内存 将这个字节流所代表的静态存储结构转化为方法区的运行时数据结构。
@@ -856,6 +856,8 @@
         if (document.readyState === "complete") NProgress.done();
     });
 </script>
+
+
     </body>
 
 

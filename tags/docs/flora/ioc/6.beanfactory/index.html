@@ -7,7 +7,7 @@ getBean用于从容器中获取Bean containsBean 容器中是否存在Bean(可�
 
 <link rel='canonical' href='https://yanghaoyu.xyz/tags/docs/flora/ioc/6.beanfactory/'>
 
-<link rel="stylesheet" href="/scss/style.min.be7bdd4e56c8a6c3c4d30c70154e7694c74256238402d9fd178f53754c079396.css"><meta property='og:title' content='BeanFactory'>
+<link rel="stylesheet" href="/scss/style.min.c5e3a0e1ef9e4132087107b323b39421c5a9148668da197430042f404845d381.css"><meta property='og:title' content='BeanFactory'>
 <meta property='og:description' content='BeanFactory是工厂模式的体现, 它接受一系列BeanDefinition并以此生成对应的Bean
 BeanFactory BeanFactory是一个接口
 getBean用于从容器中获取Bean containsBean 容器中是否存在Bean(可以判断多例) containsSingletonBean 容器中是否存在单例Bean(多例不存在) public interface BeanFactory { Object getBean(String name) throws BeansException; Object getBean(String name, Object... args) throws BeansException; &amp;lt;T&amp;gt; T getBean(String name, Class&amp;lt;T&amp;gt; requiredType); boolean containsBean(String name); boolean containsSingletonBean(String name); } // ListableBeanFactory 拓展了 BeanFactory public interface ListableBeanFactory extends BeanFactory { /** * 按照类型返回 Bean 实例 */ &amp;lt;T&amp;gt; Map&amp;lt;String, T&amp;gt; getBeansOfType(Class&amp;lt;T&amp;gt; type) throws BeansException; /** * 返回注册表中所有的Bean名称 */ String[] getBeanDefinitionNames(); } ConfigurableBeanFactory ConfigurableBeanFactory 声明了一系列方法,为BeanFactory提供更多的功能'>
@@ -1123,6 +1123,8 @@ getBean用于从容器中获取Bean containsBean 容器中是否存在Bean(可�
         if (document.readyState === "complete") NProgress.done();
     });
 </script>
+
+
     </body>
 
 

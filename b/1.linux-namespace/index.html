@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr">
+    <head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content='操作系统管理硬件资源并向上提供接口。要在宿主机上实现多个进程互不干扰地运行， 首先就要实现对各个进程资源的隔离。Linux 提供了 Namespace 用于实现该功能，这能帮助我们更好地实现虚拟化。'><title>「手写 Docker」 1. 使用 Namespace 隔离资源</title>
+
+<link rel='canonical' href='https://yanghaoyu.xyz/b/1.linux-namespace/'>
+
+<link rel="stylesheet" href="/scss/style.min.c5e3a0e1ef9e4132087107b323b39421c5a9148668da197430042f404845d381.css"><meta property='og:title' content='「手写 Docker」 1. 使用 Namespace 隔离资源'>
+<meta property='og:description' content='操作系统管理硬件资源并向上提供接口。要在宿主机上实现多个进程互不干扰地运行， 首先就要实现对各个进程资源的隔离。Linux 提供了 Namespace 用于实现该功能，这能帮助我们更好地实现虚拟化。'>
+<meta property='og:url' content='https://yanghaoyu.xyz/b/1.linux-namespace/'>
+<meta property='og:site_name' content='Howie'>
+<meta property='og:type' content='article'><meta property='article:section' content='Blogs' /><meta property='article:tag' content='Imitate Docker' /><meta property='article:published_time' content='2022-11-09T00:00:00&#43;00:00'/><meta property='article:modified_time' content='2022-11-09T00:00:00&#43;00:00'/>
+<meta name="twitter:title" content="「手写 Docker」 1. 使用 Namespace 隔离资源">
+<meta name="twitter:description" content="操作系统管理硬件资源并向上提供接口。要在宿主机上实现多个进程互不干扰地运行， 首先就要实现对各个进程资源的隔离。Linux 提供了 Namespace 用于实现该功能，这能帮助我们更好地实现虚拟化。">
+    <link rel="shortcut icon" href="/img/favicon.ico" />
+
+  
+    </head>
+    <body class="
+    article-page
+    ">
+    <script>
+        (function() {
+            const colorSchemeKey = 'StackColorScheme';
+            if(!localStorage.getItem(colorSchemeKey)){
+                localStorage.setItem(colorSchemeKey, "auto");
+            }
+        })();
+    </script><script>
+    (function() {
+        const colorSchemeKey = 'StackColorScheme';
+        const colorSchemeItem = localStorage.getItem(colorSchemeKey);
+        const supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+
+        if (colorSchemeItem == 'dark' || colorSchemeItem === 'auto' && supportDarkMode) {
+            
+
+            document.documentElement.dataset.scheme = 'dark';
+        } else {
+            document.documentElement.dataset.scheme = 'light';
+        }
+    })();
+</script>
+<div class="container main-container flex on-phone--column extended"><aside class="sidebar left-sidebar sticky ">
+    <button class="hamburger hamburger--spin" type="button" id="toggle-menu" aria-label="Toggle Menu">
+        <span class="hamburger-box">
+            <span class="hamburger-inner"></span>
+        </span>
+    </button>
+
+    <header>
+        
+            
+            <figure class="site-avatar">
+                <a href="/">
+                
+                    
+                    
+                    
+                        
+                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                            height="300" class="site-logo" loading="lazy" alt="Avatar">
+                    
+                
+                </a>
+                
+                    <span class="emoji">😜</span>
+                
+            </figure>
+            
+        
+        
+        <div class="site-meta">
+            <h1 class="site-name"><a href="/">Howie</a></h1>
+            <h2 class="site-description">Refactor World</h2>
+        </div>
+    </header><ol class="social-menu">
+            
+                <li>
+                    <a 
+                        href='https://github.com/howieyoung91'
+                        target="_blank"
+                        title="GitHub"
+                    >
+                        
+                        
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-brand-github" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+  <path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5" />
+</svg>
+                        
+                    </a>
+                </li>
+            
+                <li>
+                    <a 
+                        href='https://www.instagram.com/howieyoung824/'
+                        target="_blank"
+                        title="Instagram"
+                    >
+                        
+                        
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-brand-instagram" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <rect x="4" y="4" width="16" height="16" rx="4" />
+    <circle cx="12" cy="12" r="3" />
+    <line x1="16.5" y1="7.5" x2="16.5" y2="7.501" />
+  </svg>
+                        
+                    </a>
+                </li>
+            
+                <li>
+                    <a 
+                        href='mailto:ishowieyoung@icloud.com'
+                        target="_blank"
+                        title="Mail"
+                    >
+                        
+                        
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-mail" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <polyline points="3 7 12 13 21 7" />
+  </svg>
+                        
+                    </a>
+                </li>
+            
+        </ol><ol class="menu" id="main-menu">
+        
+        
+        
+
+        <li >
+            <a href='/tags/%E6%89%8B%E5%86%99spring' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-file-text" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+    <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+    <line x1="9" y1="9" x2="10" y2="9" />
+    <line x1="9" y1="13" x2="15" y2="13" />
+    <line x1="9" y1="17" x2="15" y2="17" />
+</svg>
+                
+                <span>Imitate Spring</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/tags/imitate-docker' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-file-text" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+    <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+    <line x1="9" y1="9" x2="10" y2="9" />
+    <line x1="9" y1="13" x2="15" y2="13" />
+    <line x1="9" y1="17" x2="15" y2="17" />
+</svg>
+                
+                <span>Imitate Docker</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/search/' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-search" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="10" cy="10" r="7" />
+  <line x1="21" y1="21" x2="15" y2="15" />
+</svg>
+
+
+
+                
+                <span>Search</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/archives/' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-archive" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <rect x="3" y="4" width="18" height="4" rx="2" />
+  <path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-10" />
+  <line x1="10" y1="12" x2="14" y2="12" />
+</svg>
+
+
+
+                
+                <span>Archives</span>
+            </a>
+        </li>
+        
+        
+
+        <li >
+            <a href='/about/' >
+                
+                
+                
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-user" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="7" r="4" />
+  <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+</svg>
+
+
+
+                
+                <span>About</span>
+            </a>
+        </li>
+        
+
+        <div class="menu-bottom-section">
+            
+            
+                <li id="dark-mode-toggle">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="8" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-toggle-right" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="16" cy="12" r="2" />
+  <rect x="2" y="6" width="20" height="12" rx="6" />
+</svg>
+
+
+
+                    <span>Dark Mode</span>
+                </li>
+            
+        </div>
+    </ol>
+</aside>
+<main class="main full-width">
+    <article class="main-article">
+    <header class="article-header">
+
+    <div class="article-details">
+    
+    <header class="article-category">
+        
+            <a href="/categories/%E9%80%A0%E8%BD%AE%E5%AD%90/" >
+                造轮子
+            </a>
+        
+        
+            <a href="/tags/imitate-docker/" >
+                Imitate Docker
+            </a>
+        
+    </header>
+    
+
+    <div class="article-title-wrapper">
+        <h2 class="article-title">
+            <a href="/b/1.linux-namespace/">「手写 Docker」 1. 使用 Namespace 隔离资源</a>
+        </h2>
+    
+        
+        <h3 class="article-subtitle">
+            操作系统管理硬件资源并向上提供接口。要在宿主机上实现多个进程互不干扰地运行， 首先就要实现对各个进程资源的隔离。Linux 提供了 Namespace 用于实现该功能，这能帮助我们更好地实现虚拟化。
+        </h3>
+        
+    </div>
+
+    
+    <footer class="article-time">
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-time" width="56" height="56" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" />
+  <circle cx="18" cy="18" r="4" />
+  <path d="M15 3v4" />
+  <path d="M7 3v4" />
+  <path d="M3 11h16" />
+  <path d="M18 16.496v1.504l1 1" />
+</svg>
+                <time class="article-time--published">Nov 09, 2022</time>
+            </div>
+        
+
+        
+            <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-clock" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <polyline points="12 7 12 12 15 15" />
+</svg>
+
+
+
+                <time class="article-time--reading">
+                    7 minute read
+                </time>
+            </div>
+        
+    </footer>
+    
+
+    
+</div>
+</header>
+
+    <section class="article-content">
+    
+    
+    <hr>
+<h2 id="introduction">Introduction</h2>
+<p>在 Linux 中每一个进程都有自己所属的 Namespace，默认所有进程都运行在 <code>root Namespace</code> 下，共享全局资源。<br>
+同时 Linux 大致提供了以下几种 Namespace 功能帮助我们进行资源隔离。</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>Namespace</th>
+<th>Flag</th>
+<th>Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mount Namespace</td>
+<td>CLONE_NEWNS</td>
+<td>隔离各个进程看到的挂载点视图</td>
+</tr>
+<tr>
+<td>User Namespace</td>
+<td>CLONE_NEWUSER</td>
+<td>隔离用户</td>
+</tr>
+<tr>
+<td>PID Namespace</td>
+<td>CLONE_NEWPID</td>
+<td>隔离 PID</td>
+</tr>
+<tr>
+<td>IPC Namespace</td>
+<td>CLONE_NEWIPC</td>
+<td>隔离进程间通信，System V IPC 和 POSIX MQ</td>
+</tr>
+<tr>
+<td>Network Namespace</td>
+<td>CLONE_NEWNET</td>
+<td>隔离网络</td>
+</tr>
+<tr>
+<td>UTS Namespace</td>
+<td>CLONE_NEWUTS</td>
+<td>隔离 nodename 和 domainname</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="相关的-system-call">相关的 System Call</h3>
+<!-- clone 函数不是 POSIX 接口函数，不能跨平台使用，包含头文件前，必须定义 `#define _GNU_SOURCE` -->
+<ol start="0">
+<li><code>clone()</code> 创建新进程，可以指定新进程的 Namespace</li>
+</ol>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">clone</span><span class="p">(</span><span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">fn</span><span class="p">)(</span><span class="kt">void</span><span class="o">*</span> <span class="n">arg</span><span class="p">),</span> <span class="kt">void</span><span class="o">*</span> <span class="n">child_stack</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">,</span> <span class="kt">void</span><span class="o">*</span> <span class="n">arg</span><span class="p">,</span> <span class="p">...);</span>
+</span></span></code></pre></div><ol>
+<li><code>unshare()</code> 把某个进程移出指定的 Namespace</li>
+</ol>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">unshare</span><span class="p">(</span><span class="kt">int</span> <span class="n">flags</span><span class="p">);</span>
+</span></span></code></pre></div><ol start="2">
+<li><code>setns()</code> 把某个进程放入指定的 Namespace</li>
+</ol>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">setns</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="kt">int</span> <span class="n">nstype</span><span class="p">);</span>
+</span></span></code></pre></div><!-- ```shell
+ls -l /proc/$$/ns | awk '{print $1,$(NF-2),$(NF-1),$NF}'
+``` -->
+<hr>
+<h2 id="uts-namespace">UTS Namespace</h2>
+<p>UTS Namespace 主要用来隔离 nodename 和 domainname。
+在 Golang 中可以通过指定 cmd.SysProcAttr 来设置 Namespace</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-golang" data-lang="golang"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">var</span> <span class="nx">cmd</span> <span class="p">=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">Command</span><span class="p">(</span><span class="s">&#34;sh&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">SysProcAttr</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">syscall</span><span class="p">.</span><span class="nx">SysProcAttr</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">Cloneflags</span><span class="p">:</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUTS</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdin</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdout</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stderr</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">cmd</span><span class="p">.</span><span class="nf">Run</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><h3 id="验证-hostname-被隔离">验证 hostname 被隔离</h3>
+<p>在进程中：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">$ <span class="nb">echo</span> <span class="nv">$$</span>
+</span></span><span class="line"><span class="cl"><span class="m">93</span>
+</span></span><span class="line"><span class="cl">$ readlink /proc/93/ns/uts
+</span></span><span class="line"><span class="cl">uts:<span class="o">[</span>4026532307<span class="o">]</span>
+</span></span></code></pre></div><p>在外部的 Terminal 中，
+同样执行上述代码可以发现两个线程的 UTS Namespace 是不一样的，这就表明我们的程序被隔离开了，
+因此我们在进程内修改 hostname 那么也不会影响到其他的进程的 hostname。</p>
+<p>我的代码如下：</p>
+<ul>
+<li>main:</li>
+</ul>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># main</span>
+</span></span><span class="line"><span class="cl">$ hostname <span class="c1"># 先查看一下 hostname</span>
+</span></span><span class="line"><span class="cl">bfcbd31e5fb7
+</span></span><span class="line"><span class="cl">$ hostname -b howieyoung <span class="c1"># 修改 hostname</span>
+</span></span><span class="line"><span class="cl">$ hostname <span class="c1"># 再次查看 hostname，确保已经修改</span>
+</span></span><span class="line"><span class="cl">howieyoung
+</span></span></code></pre></div><ul>
+<li>linux terminal:</li>
+</ul>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># linux terminal</span>
+</span></span><span class="line"><span class="cl">$ hostname <span class="c1"># 在 main 进程修改 hostname 之前查看一下</span>
+</span></span><span class="line"><span class="cl">bfcbd31e5fb7
+</span></span><span class="line"><span class="cl">$ hostname <span class="c1"># 在 main 进程修改 hostname 之后查看一下</span>
+</span></span><span class="line"><span class="cl">bfcbd31e5fb7
+</span></span></code></pre></div><p>两次 hostname 是一样的，这也能验证 main 线程被隔离了<br>
+同时可以看到我们执行 <code>echo $$</code> 获取到的当前进程的 ID 是 93，这似乎有些不正确，
+我们期望在容器内把 main 线程看作根结点。这是因为 UTS Namespace 并不会把 PID
+隔离开。为了完成这件事，我们需要使用 PID Namespace。</p>
+<h2 id="pid-namespace">PID Namespace</h2>
+<p>我们添加上 PID Namespace，再次运行。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">var</span> <span class="nx">cmd</span> <span class="p">=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">Command</span><span class="p">(</span><span class="s">&#34;sh&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">SysProcAttr</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">syscall</span><span class="p">.</span><span class="nx">SysProcAttr</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">Cloneflags</span><span class="p">:</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUTS</span> <span class="p">|</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWPID</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdin</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdout</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stderr</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">cmd</span><span class="p">.</span><span class="nf">Run</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><h3 id="验证-pid-被隔离">验证 PID 被隔离</h3>
+<p>执行 <code>echo $$</code></p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">$ <span class="nb">echo</span> <span class="nv">$$</span>
+</span></span><span class="line"><span class="cl"><span class="m">1</span>
+</span></span></code></pre></div><p>当前进程的 id 变成了 1，表明 pid 已经隔离</p>
+<h2 id="ipc-namespace">IPC Namespace</h2>
+<p>IPC，进程间通信，主要包括包括 <code>Pipe</code> <code>Socket</code> <code>Semaphore</code> <code>MQ</code> <code>Signal</code> <code>mmap</code> 等。</p>
+<blockquote>
+<p>在 Linux 中，主要有两套接口 <code>System V</code> 和 <code>POSIX</code> 实现 IPC</p>
+<ol>
+<li>System V IPC: 来自于 Unix，最初由 AT&amp;T 开发，1983 年第一次发布</li>
+<li>POSIX: IEEE 制定的一组接口，兼容了绝大部分 System V，移植性好</li>
+</ol>
+</blockquote>
+<p>IPC Namespace 用来隔离 System V IPC 和 POSIX message queues。 每一个 IPC Namespace
+都有自己的 System V IPC 和 POSIX message queue。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">var</span> <span class="nx">cmd</span> <span class="p">=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">Command</span><span class="p">(</span><span class="s">&#34;sh&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">SysProcAttr</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">syscall</span><span class="p">.</span><span class="nx">SysProcAttr</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">Cloneflags</span><span class="p">:</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUTS</span> <span class="p">|</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWIPC</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdin</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdout</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stderr</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">cmd</span><span class="p">.</span><span class="nf">Run</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><h3 id="验证-ipc-被隔离">验证 IPC 被隔离</h3>
+<p>首先在 main 进程下和 linux terminal 内分别运行 <code>ipcs -a</code> 查看 ipc 情况</p>
+<ul>
+<li>main：</li>
+</ul>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># main</span>
+</span></span><span class="line"><span class="cl">$ ipcs -a
+</span></span><span class="line"><span class="cl">------ Message Queues --------
+</span></span><span class="line"><span class="cl">key        msqid      owner      perms      used-bytes   messages
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">------ Shared Memory Segments --------
+</span></span><span class="line"><span class="cl">key        shmid      owner      perms      bytes      nattch     status
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">------ Semaphore Arrays --------
+</span></span><span class="line"><span class="cl">key        semid      owner      perms      nsems
+</span></span></code></pre></div><ul>
+<li>linux terminal</li>
+</ul>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># linux terminal</span>
+</span></span><span class="line"><span class="cl">$ ipcs -a
+</span></span><span class="line"><span class="cl">------ Message Queues --------
+</span></span><span class="line"><span class="cl">key        msqid      owner      perms      used-bytes   messages
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">------ Shared Memory Segments --------
+</span></span><span class="line"><span class="cl">key        shmid      owner      perms      bytes      nattch     status
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">------ Semaphore Arrays --------
+</span></span><span class="line"><span class="cl">key        semid      owner      perms      nsems
+</span></span></code></pre></div><p>可以看到都没有任何的 IPC</p>
+<p>在 main 进程下执行 <code>ipcmk -Q</code> 创建一个 mq，然后查看</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># main</span>
+</span></span><span class="line"><span class="cl">$ ipcmk -Q
+</span></span><span class="line"><span class="cl">Message queue id: <span class="m">0</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">$ ipcs -a <span class="c1"># 查看 ipc 情况</span>
+</span></span><span class="line"><span class="cl">------ Message Queues --------
+</span></span><span class="line"><span class="cl">key        msqid      owner      perms      used-bytes   messages
+</span></span><span class="line"><span class="cl">0xab342dbe <span class="m">0</span>          root       <span class="m">644</span>        <span class="m">0</span>            <span class="m">0</span>           <span class="c1"># 成功创建</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">------ Shared Memory Segments --------
+</span></span><span class="line"><span class="cl">key        shmid      owner      perms      bytes      nattch     status
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">------ Semaphore Arrays --------
+</span></span><span class="line"><span class="cl">key        semid      owner      perms      nsems
+</span></span></code></pre></div><p>打开 terminal，执行 <code>ipcs -a</code> 可以发现在 root Namespace 中是不存在这个 MQ 的，
+这就表示我们使用 IPC Namespace 成功地把两个进程的通信资源隔离开了</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># linux terminal</span>
+</span></span><span class="line"><span class="cl">$ ipcs -a
+</span></span><span class="line"><span class="cl">------ Message Queues --------
+</span></span><span class="line"><span class="cl">key        msqid      owner      perms      used-bytes   messages
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">------ Shared Memory Segments --------
+</span></span><span class="line"><span class="cl">key        shmid      owner      perms      bytes      nattch     status
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">------ Semaphore Arrays --------
+</span></span><span class="line"><span class="cl">key        semid      owner      perms      nsems
+</span></span></code></pre></div><h2 id="mount-namespace">Mount Namespace</h2>
+<p>Mount Namespace 可以通过隔离挂载点，为各个进程提供单独的文件视图。
+在不同 Namespace 的进程中， 看到的文件系统层次是不一样的。在 Mount Namespace 中调用
+<code>mount()</code> <code>umount() </code>仅仅只会影响当前 Namespace 内的文件系统 ，而对全局的文件系统是没有影响的。</p>
+<ol>
+<li>mount/umount 函数原型：</li>
+</ol>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;sys/mount.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span><span class="kt">int</span> <span class="nf">mount</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">source</span><span class="p">,</span>         <span class="k">const</span> <span class="kt">char</span><span class="o">*</span>   <span class="n">target</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">          <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">filesystemtype</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">mountflags</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">          <span class="k">const</span> <span class="kt">void</span><span class="o">*</span> <span class="n">data</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">umount</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">file</span><span class="p">);</span>
+</span></span></code></pre></div><ol start="2">
+<li>shell</li>
+</ol>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">mount <span class="o">[</span>-t 系统类型<span class="o">]</span> <span class="o">[</span>-L 卷标名<span class="o">]</span> <span class="o">[</span>-o 特殊选项<span class="o">]</span> <span class="o">[</span>-n<span class="o">]</span> 设备文件名 挂载点
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">umount 挂载点
+</span></span></code></pre></div> <!-- > `mount()` attaches the filesystem specified by `source` (which is
+ > often a pathname referring to a device, but can also be the
+ > pathname of a directory or file, or a dummy string) to the
+ > location (a directory or file) specified by the pathname in
+ > `target`.
+ >
+ > Appropriate privilege (Linux: the CAP_SYS_ADMIN capability) is
+ > required to mount filesystems.
+ >
+ > Values for the `filesystemtype` argument supported by the kernel
+ > are listed in `/proc/filesystems` (e.g., "btrfs", "ext4", "jfs",
+ > "xfs", "vfat", "fuse", "tmpfs", "cgroup", "proc", "mqueue",
+ > "nfs", "cifs", "iso9660"). Further types may become available
+ > when the appropriate modules are loaded.
+ >
+ > The `data` argument is interpreted by the different filesystems.
+ > Typically it is a string of comma-separated options understood by
+ > this filesystem. See mount(8) for details of the options
+ > available for each filesystem type. This argument may be
+ > specified as NULL, if there are no options.
+ >
+ > A call to `mount()` performs one of a number of general types of
+ > operation, depending on the bits specified in mountflags. The
+ > choice of which operation to perform is determined by testing the
+ > bits set in mountflags, with the tests being conducted in the
+ > order listed here:
+ >
+ > -   Remount an existing mount: mountflags includes `MS_REMOUNT`.
+ > -   Create a bind mount: mountflags includes `MS_BIND`.
+ > -   Change the propagation type of an existing mount: mountflags
+ >     includes one of `MS_SHARED`, `MS_PRIVATE`, `MS_SLAVE`, or `MS_UNBINDABLE`.
+ > -   Move an existing mount to a new location: mountflags includes
+ >     `MS_MOVE`.
+ > -   Create a new mount: mountflags includes none of the above
+ >     flags.
+ >
+ > Each of these operations is detailed later in this page. Further
+ > flags may be specified in mountflags to modify the behavior of
+ > `mount()`, as described below. -->
+<!-- ![file-system](/assets/img/file-system.drawio.png) -->
+<p>go 代码如下：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">var</span> <span class="nx">cmd</span> <span class="p">=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">Command</span><span class="p">(</span><span class="s">&#34;sh&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">SysProcAttr</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">syscall</span><span class="p">.</span><span class="nx">SysProcAttr</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">Cloneflags</span><span class="p">:</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUTS</span> <span class="p">|</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWIPC</span> <span class="p">|</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWPID</span> <span class="p">|</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWNS</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdin</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdout</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stderr</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">cmd</span><span class="p">.</span><span class="nf">Run</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><h3 id="验证挂载点被隔离">验证挂载点被隔离</h3>
+<p>首先在 Linux Terminal 下执行 <code>ps -ef</code>，这个命令会从 /proc 目录下读取数据获取到进程信息。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># linux terminal</span>
+</span></span><span class="line"><span class="cl">$ ps -ef
+</span></span><span class="line"><span class="cl">UID          PID    PPID  C STIME TTY      TIME CMD
+</span></span><span class="line"><span class="cl">root           <span class="m">1</span>       <span class="m">0</span>  <span class="m">0</span> 14:39 ?        00:00:00 /sbin/init
+</span></span><span class="line"><span class="cl">root          <span class="m">25</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/lib/systemd/systemd-journald
+</span></span><span class="line"><span class="cl">root          <span class="m">30</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/lib/systemd/systemd-udevd
+</span></span><span class="line"><span class="cl">dbus          <span class="m">55</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/bin/dbus-daemon --system --address<span class="o">=</span>systemd: --nofo
+</span></span><span class="line"><span class="cl">root          <span class="m">56</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/sbin/sshd -D -oCiphers<span class="o">=</span>aes256-gcm@openssh.com,chac
+</span></span><span class="line"><span class="cl">root          <span class="m">66</span>      <span class="m">56</span>  <span class="m">0</span> 14:40 ?        00:00:00 sshd: root <span class="o">[</span>priv<span class="o">]</span>
+</span></span><span class="line"><span class="cl">root          <span class="m">68</span>      <span class="m">66</span>  <span class="m">0</span> 14:40 ?        00:00:00 sshd: root@pts/1
+</span></span><span class="line"><span class="cl">root          <span class="m">69</span>      <span class="m">68</span>  <span class="m">0</span> 14:40 pts/1    00:00:00 -bash
+</span></span><span class="line"><span class="cl">root          <span class="m">82</span>      <span class="m">69</span>  <span class="m">0</span> 14:40 pts/1    00:00:00 ps -ef
+</span></span></code></pre></div><p>回到 main 进程中，继续使用 <code>ps -ef</code> 先看一下进程<br>
+观察一下，可以发现目前 main 可以看到的文件视图是和 linux 其他是一样的<br>
+使用 <code>mount --make-rprivate /</code> 把挂载点设置私有，防止 <code>mount</code> 影响到其他 namespace<br>
+执行 <code>mount -t proc proc /proc</code>，把 proc 文件系统挂在到 /proc 目录下</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># main</span>
+</span></span><span class="line"><span class="cl">$ ps -ef
+</span></span><span class="line"><span class="cl">UID          PID    PPID  C STIME TTY      TIME CMD
+</span></span><span class="line"><span class="cl">root           <span class="m">1</span>       <span class="m">0</span>  <span class="m">0</span> 14:39 ?        00:00:00 /sbin/init
+</span></span><span class="line"><span class="cl">root          <span class="m">25</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/lib/systemd/systemd-jou
+</span></span><span class="line"><span class="cl">root          <span class="m">30</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/lib/systemd/systemd-ude
+</span></span><span class="line"><span class="cl">dbus          <span class="m">55</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/bin/dbus-daemon --syste
+</span></span><span class="line"><span class="cl">root          <span class="m">56</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/sbin/sshd -D -oCiphers<span class="o">=</span>
+</span></span><span class="line"><span class="cl">root          <span class="m">66</span>      <span class="m">56</span>  <span class="m">0</span> 14:40 ?        00:00:00 sshd: root <span class="o">[</span>priv<span class="o">]</span>
+</span></span><span class="line"><span class="cl">root          <span class="m">68</span>      <span class="m">66</span>  <span class="m">0</span> 14:40 ?        00:00:00 sshd: root@pts/1
+</span></span><span class="line"><span class="cl">root          <span class="m">69</span>      <span class="m">68</span>  <span class="m">0</span> 14:40 pts/1    00:00:00 -bash
+</span></span><span class="line"><span class="cl">root          <span class="m">83</span>      <span class="m">56</span>  <span class="m">0</span> 14:41 ?        00:00:00 sshd: root <span class="o">[</span>priv<span class="o">]</span>
+</span></span><span class="line"><span class="cl">root          <span class="m">85</span>      <span class="m">83</span>  <span class="m">0</span> 14:41 ?        00:00:00 sshd: root@pts/2
+</span></span><span class="line"><span class="cl">root         <span class="m">140</span>      <span class="m">85</span>  <span class="m">0</span> 14:41 pts/2    00:00:00 /root/porrima/executables-WI
+</span></span><span class="line"><span class="cl">root         <span class="m">153</span>     <span class="m">140</span>  <span class="m">0</span> 14:41 pts/2    00:00:00 sh
+</span></span><span class="line"><span class="cl">root         <span class="m">154</span>     <span class="m">153</span>  <span class="m">0</span> 14:41 pts/2    00:00:00 ps -ef
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">$ mount --make-rprivate /  <span class="c1"># 把根节点设置私有，防止 shared subtree 影响到其他 namespace</span>
+</span></span><span class="line"><span class="cl">$ mount -t proc proc /proc <span class="c1"># 把 proc 挂在到  /proc 目录下</span>
+</span></span></code></pre></div><p>在 main 进程内执行 <code>ps -ef</code>，读取一下 /proc 下的进程信息，可以发现进程少了非常多，说明 <code>mount</code> 生效</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># main</span>
+</span></span><span class="line"><span class="cl">$ ps -ef
+</span></span><span class="line"><span class="cl">UID          PID    PPID  C STIME TTY      TIME CMD
+</span></span><span class="line"><span class="cl">root           <span class="m">1</span>       <span class="m">0</span>  <span class="m">0</span> 14:41 pts/2    00:00:00 sh
+</span></span><span class="line"><span class="cl">root           <span class="m">7</span>       <span class="m">1</span>  <span class="m">0</span> 14:43 pts/2    00:00:00 ps -ef
+</span></span></code></pre></div><p>回到 Linux Terminal 中，使用 <code>ps -ef</code> 查看进程</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># linux terminal</span>
+</span></span><span class="line"><span class="cl">$ ps -ef
+</span></span><span class="line"><span class="cl">UID          PID    PPID  C STIME TTY      TIME CMD
+</span></span><span class="line"><span class="cl">root           <span class="m">1</span>       <span class="m">0</span>  <span class="m">0</span> 14:39 ?        00:00:00 /sbin/init
+</span></span><span class="line"><span class="cl">root          <span class="m">25</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/lib/systemd/systemd-journald
+</span></span><span class="line"><span class="cl">root          <span class="m">30</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/lib/systemd/systemd-udevd
+</span></span><span class="line"><span class="cl">dbus          <span class="m">55</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/bin/dbus-daemon --system --address<span class="o">=</span>systemd: --nofo
+</span></span><span class="line"><span class="cl">root          <span class="m">56</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/sbin/sshd -D -oCiphers<span class="o">=</span>aes256-gcm@openssh.com,chac
+</span></span><span class="line"><span class="cl">root          <span class="m">66</span>      <span class="m">56</span>  <span class="m">0</span> 14:40 ?        00:00:00 sshd: root <span class="o">[</span>priv<span class="o">]</span>
+</span></span><span class="line"><span class="cl">root          <span class="m">68</span>      <span class="m">66</span>  <span class="m">0</span> 14:40 ?        00:00:00 sshd: root@pts/1
+</span></span><span class="line"><span class="cl">root          <span class="m">69</span>      <span class="m">68</span>  <span class="m">0</span> 14:40 pts/1    00:00:00 -bash
+</span></span><span class="line"><span class="cl">root          <span class="m">83</span>      <span class="m">56</span>  <span class="m">0</span> 14:41 ?        00:00:00 sshd: root <span class="o">[</span>priv<span class="o">]</span>
+</span></span><span class="line"><span class="cl">root          <span class="m">85</span>      <span class="m">83</span>  <span class="m">0</span> 14:41 ?        00:00:00 sshd: root@pts/2
+</span></span><span class="line"><span class="cl">root         <span class="m">140</span>      <span class="m">85</span>  <span class="m">0</span> 14:41 pts/2    00:00:00 /root/porrima/executables-WIPxpUrEfN/___docker_linux_li
+</span></span><span class="line"><span class="cl">root         <span class="m">153</span>     <span class="m">140</span>  <span class="m">0</span> 14:41 pts/2    00:00:00 sh
+</span></span><span class="line"><span class="cl">root         <span class="m">162</span>      <span class="m">69</span>  <span class="m">0</span> 14:43 pts/1    00:00:00 ps -ef
+</span></span></code></pre></div><p>可以发现在 Linux 本地进程信息并未改变，这就表明 Mount Namespace 成功隔离了 main 的文件视图</p>
+<h2 id="user-namespace">User Namespace</h2>
+<p>User Namespace 用来是隔离用户的用户组 ID。<br>
+在 User Namespace 外的一个普通用户可以映射为一个 root 用户</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">var</span> <span class="nx">cmd</span> <span class="p">=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">Command</span><span class="p">(</span><span class="s">&#34;sh&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">SysProcAttr</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">syscall</span><span class="p">.</span><span class="nx">SysProcAttr</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">Cloneflags</span><span class="p">:</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUTS</span> <span class="p">|</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWIPC</span> <span class="p">|</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWPID</span> <span class="p">|</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWNS</span>  <span class="p">|</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUSER</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdin</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdout</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stderr</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">cmd</span><span class="p">.</span><span class="nf">Run</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><h3 id="验证-user-被隔离">验证 User 被隔离</h3>
+<p>分别在 main 和 linux terminal 执行 <code>id</code> 命令，查看当前用户是否相同</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># linux terminal</span>
+</span></span><span class="line"><span class="cl">$ whoami
+</span></span><span class="line"><span class="cl">root
+</span></span><span class="line"><span class="cl">$ id
+</span></span><span class="line"><span class="cl"><span class="nv">uid</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span> <span class="nv">groups</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span>
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># main</span>
+</span></span><span class="line"><span class="cl">$ whoami
+</span></span><span class="line"><span class="cl">nobody
+</span></span><span class="line"><span class="cl">$ id
+</span></span><span class="line"><span class="cl"><span class="nv">uid</span><span class="o">=</span>65534<span class="o">(</span>nobody<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>65534<span class="o">(</span>nobody<span class="o">)</span> <span class="nv">groups</span><span class="o">=</span>65534<span class="o">(</span>nobody<span class="o">)</span>
+</span></span></code></pre></div><p>可以发现两个 User 并不相同，这就表明 User 成功被隔离</p>
+<h2 id="network-namespace">Network Namespace</h2>
+<p>Network Namespace 用来隔离网络栈<br>
+在 Network Namespace 中 <code>Network Device</code> <code>port</code> <code>Socket</code> <code>firewall</code>等网络环境都是独立的。</p>
+<p>代码如下：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">var</span> <span class="nx">cmd</span> <span class="p">=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">Command</span><span class="p">(</span><span class="s">&#34;sh&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">SysProcAttr</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">syscall</span><span class="p">.</span><span class="nx">SysProcAttr</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">Cloneflags</span><span class="p">:</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUTS</span> <span class="p">|</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWIPC</span> <span class="p">|</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWPID</span> <span class="p">|</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWNS</span>  <span class="p">|</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUSER</span><span class="p">|</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWNET</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdin</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdout</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stderr</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">cmd</span><span class="p">.</span><span class="nf">Run</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><h3 id="验证-network-是否被隔离">验证 Network 是否被隔离</h3>
+<p>我们使用 <code>ifconfig</code> 查看网络配置</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># linux terminal</span>
+</span></span><span class="line"><span class="cl">sh-4.4$ ifconfig
+</span></span><span class="line"><span class="cl">eth0: <span class="nv">flags</span><span class="o">=</span>4163&lt;UP,BROADCAST,RUNNING,MULTICAST&gt;  mtu <span class="m">1500</span>
+</span></span><span class="line"><span class="cl">        inet 172.17.0.2  netmask 255.255.0.0  broadcast 172.17.255.255
+</span></span><span class="line"><span class="cl">        ether 02:42:ac:11:00:02  txqueuelen <span class="m">0</span>  <span class="o">(</span>Ethernet<span class="o">)</span>
+</span></span><span class="line"><span class="cl">        RX packets <span class="m">747</span>  bytes <span class="m">6368553</span> <span class="o">(</span>6.0 MiB<span class="o">)</span>
+</span></span><span class="line"><span class="cl">        RX errors <span class="m">0</span>  dropped <span class="m">0</span>  overruns <span class="m">0</span>  frame <span class="m">0</span>
+</span></span><span class="line"><span class="cl">        TX packets <span class="m">721</span>  bytes <span class="m">85839</span> <span class="o">(</span>83.8 KiB<span class="o">)</span>
+</span></span><span class="line"><span class="cl">        TX errors <span class="m">0</span>  dropped <span class="m">0</span> overruns <span class="m">0</span>  carrier <span class="m">0</span>  collisions <span class="m">0</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">lo: <span class="nv">flags</span><span class="o">=</span>73&lt;UP,LOOPBACK,RUNNING&gt;  mtu <span class="m">65536</span>
+</span></span><span class="line"><span class="cl">        inet 127.0.0.1  netmask 255.0.0.0
+</span></span><span class="line"><span class="cl">        loop  txqueuelen <span class="m">1000</span>  <span class="o">(</span>Local Loopback<span class="o">)</span>
+</span></span><span class="line"><span class="cl">        RX packets <span class="m">0</span>  bytes <span class="m">0</span> <span class="o">(</span>0.0 B<span class="o">)</span>
+</span></span><span class="line"><span class="cl">        RX errors <span class="m">0</span>  dropped <span class="m">0</span>  overruns <span class="m">0</span>  frame <span class="m">0</span>
+</span></span><span class="line"><span class="cl">        TX packets <span class="m">0</span>  bytes <span class="m">0</span> <span class="o">(</span>0.0 B<span class="o">)</span>
+</span></span><span class="line"><span class="cl">        TX errors <span class="m">0</span>  dropped <span class="m">0</span> overruns <span class="m">0</span>  carrier <span class="m">0</span>  collisions <span class="m">0</span>
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># main</span>
+</span></span><span class="line"><span class="cl">$ ifconfig
+</span></span></code></pre></div><p>我们发现，对于 main 进程来说没有发现任何网络设备，可以肯定 main 进程的网络已经被隔离开了。</p>
+<h2 id="summary">Summary</h2>
+<p>Namespace 是 Linux 内核用来隔离内核资源的方式。
+我们可以使用 Namespace 让不同的进程的资源隔离开，同时让他们只能看到自己的东西，只能操作自己的东西，而感受不到其他 Namespace 的进程的存在，从而实现一种「虚拟化」。</p>
+
+</section>
+
+
+    <footer class="article-footer">
+    
+    <section class="article-tags">
+        
+            <a href="/tags/imitate-docker/">Imitate Docker</a>
+        
+    </section>
+
+
+    
+    <section class="article-copyright">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copyright" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <circle cx="12" cy="12" r="9" />
+  <path d="M14.5 9a3.5 4 0 1 0 0 6" />
+</svg>
+
+
+
+        <span>Licensed under CC BY-NC-SA 4.0</span>
+    </section>
+    </footer>
+
+
+    
+        <link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css"integrity="sha384-RZU/ijkSsFbcmivfdRBQDtwuwVqK7GMOw6IMvKyeWL2K5UAlyp6WonmB8m7Jd0Hn"crossorigin="anonymous"
+            ><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.js"integrity="sha384-pK1WpvzWVBQiP0/GjnvRxV4mOb0oxFuyRxJlk6vVw146n3egcN5C925NCP7a7BY8"crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/contrib/auto-render.min.js"integrity="sha384-vZTG03m&#43;2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl"crossorigin="anonymous"
+                defer
+                >
+            </script><script>
+    window.addEventListener("DOMContentLoaded", () => {
+        renderMathInElement(document.querySelector(`.article-content`), {
+            delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "$", right: "$", display: false },
+                { left: "\\(", right: "\\)", display: false },
+                { left: "\\[", right: "\\]", display: true }
+            ]
+        });})
+</script>
+    
+</article>
+
+    
+
+    
+
+<aside class="related-contents--wrapper">
+    <h2 class="section-title">Related contents</h2>
+    <div class="related-contents">
+        <div class="flex article-list--tile">
+            
+                
+<article class="">
+    <a href="/b/build-env/">
+        
+        
+
+        <div class="article-details">
+            <h2 class="article-title">「手写 Docker」 0. 搭建 Linux &#43; Golang 环境</h2>
+        </div>
+    </a>
+</article>
+            
+        </div>
+    </div>
+</aside>
+
+     
+    
+        
+    
+
+    <footer class="site-footer">
+    
+    <section class="copyright">
+        <div class="en"></div>
+        <div class="zh_cn"></div>
+        <div>
+            <a href="https://beian.miit.gov.cn/">蜀ICP备2021003636号</a>
+        </div>
+        <div class="cyber-security">
+            <img src="https://img.alicdn.com/tfs/TB1..50QpXXXXX7XpXXXXXXXXXX-40-40.png" alt="" /> 
+            <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51030202000144">川公网安备 51030202000144号</a>
+        </div>
+        <script>
+            document.querySelector(".copyright .en").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} Howie Young, All rights reserved.`
+            document.querySelector(".copyright .zh_cn").innerHTML =
+                `Copyright ©2021-${new Date().getFullYear()} 杨浩宇，保留所有权利。`
+        </script>
+    </section>
+    <section class="powerby">
+        Built with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> <br />
+        Theme <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener" data-version="3.11.0">Stack</a></b> designed by <a href="https://jimmycai.com" target="_blank" rel="noopener">Jimmy</a>
+    </section>
+</footer>
+
+
+    
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    
+    <div class="pswp__bg"></div>
+
+    
+    <div class="pswp__scroll-wrap">
+
+        
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                
+                
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"integrity="sha256-ePwmChbbvXbsO02lbM3HoHbSHTHFAeChekF1xKJdleo="crossorigin="anonymous"
+                defer
+                >
+            </script><script 
+                src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"integrity="sha256-UKkzOn/w1mBxRmLLGrSeyB4e1xbrp4xylgAWb3M42pU="crossorigin="anonymous"
+                defer
+                >
+            </script><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.css"integrity="sha256-c0uckgykQ9v5k&#43;IqViZOZKc47Jn7KQil4/MP3ySA3F8="crossorigin="anonymous"
+            ><link 
+                rel="stylesheet" 
+                href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.css"integrity="sha256-SBLU4vv6CA6lHsZ1XyTdhyjJxCjPif/TRkjnsyGAGnE="crossorigin="anonymous"
+            >
+
+            </main>
+    <aside class="sidebar right-sidebar sticky">
+        
+            
+                
+    <section class="widget archives">
+        <div class="widget-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-hash" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z"/>
+  <line x1="5" y1="9" x2="19" y2="9" />
+  <line x1="5" y1="15" x2="19" y2="15" />
+  <line x1="11" y1="4" x2="7" y2="20" />
+  <line x1="17" y1="4" x2="13" y2="20" />
+</svg>
+
+
+
+        </div>
+        <h2 class="widget-title section-title">Table of contents</h2>
+        
+        <div class="widget--toc">
+            <nav id="TableOfContents">
+  <ol>
+    <li><a href="#introduction">Introduction</a>
+      <ol>
+        <li><a href="#相关的-system-call">相关的 System Call</a></li>
+      </ol>
+    </li>
+    <li><a href="#uts-namespace">UTS Namespace</a>
+      <ol>
+        <li><a href="#验证-hostname-被隔离">验证 hostname 被隔离</a></li>
+      </ol>
+    </li>
+    <li><a href="#pid-namespace">PID Namespace</a>
+      <ol>
+        <li><a href="#验证-pid-被隔离">验证 PID 被隔离</a></li>
+      </ol>
+    </li>
+    <li><a href="#ipc-namespace">IPC Namespace</a>
+      <ol>
+        <li><a href="#验证-ipc-被隔离">验证 IPC 被隔离</a></li>
+      </ol>
+    </li>
+    <li><a href="#mount-namespace">Mount Namespace</a>
+      <ol>
+        <li><a href="#验证挂载点被隔离">验证挂载点被隔离</a></li>
+      </ol>
+    </li>
+    <li><a href="#user-namespace">User Namespace</a>
+      <ol>
+        <li><a href="#验证-user-被隔离">验证 User 被隔离</a></li>
+      </ol>
+    </li>
+    <li><a href="#network-namespace">Network Namespace</a>
+      <ol>
+        <li><a href="#验证-network-是否被隔离">验证 Network 是否被隔离</a></li>
+      </ol>
+    </li>
+    <li><a href="#summary">Summary</a></li>
+  </ol>
+</nav>
+        </div>
+    </section>
+
+            
+        
+
+        <section class="copyright">
+            <div class="en"></div>
+            <div class="zh_cn"></div>
+            <div>
+                <a href="https://beian.miit.gov.cn/">蜀ICP备2021003636号</a>
+            </div>
+            <div class="cyber-security">
+                <img src="https://img.alicdn.com/tfs/TB1..50QpXXXXX7XpXXXXXXXXXX-40-40.png" alt="" /> 
+                <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51030202000144">川公网安备 51030202000144号</a>
+            </div>
+            <script>
+                document.querySelector(".sidebar .copyright .en").innerHTML =
+                    `Copyright ©2021-${new Date().getFullYear()} Howie Young, All rights reserved.`
+                document.querySelector(".sidebar .copyright .zh_cn").innerHTML =
+                    `Copyright ©2021-${new Date().getFullYear()} 杨浩宇，保留所有权利。`
+            </script>
+        </section>
+    </aside>
+
+
+        </div>
+        <script 
+                src="https://cdn.jsdelivr.net/npm/node-vibrant@3.1.5/dist/vibrant.min.js"integrity="sha256-5NovOZc4iwiAWTYIFiIM7DxKUXKWvpVEuMEPLzcm5/g="crossorigin="anonymous"
+                
+                >
+            </script><script type="text/javascript" src="/ts/main.js" defer></script>
+<script>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+</script>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Poppins&display=swap");
+   
+   
+   
+   
+   
+  @import url("https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@700&display=swap");
+   
+   
+  @import url('https://fonts.googleapis.com/css2?family=Fira+Code&display=swap');
+</style>
+
+
+
+
+
+
+
+
+
+<script src="https://cdn.jsdelivr.net/gh/zhixuan2333/gh-blog@v0.1.0/js/nprogress.min.js"
+    integrity="sha384-bHDlAEUFxsRI7JfULv3DTpL2IXbbgn4JHQJibgo5iiXSK6Iu8muwqHANhun74Cqg"
+    crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/zhixuan2333/gh-blog@v0.1.0/css/nprogress.css"
+    integrity="sha384-KJyhr2syt5+4M9Pz5dipCvTrtvOmLk/olWVdfhAp858UCa64Ia5GFpTN7+G4BWpE" crossorigin="anonymous" />
+<script>
+    NProgress.start();
+    document.addEventListener("readystatechange", () => {
+        if (document.readyState === "interactive") NProgress.inc(0.8);
+        if (document.readyState === "complete") NProgress.done();
+    });
+</script>
+
+
+    </body>
+
+
+</html>

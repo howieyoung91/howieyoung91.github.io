@@ -6,7 +6,7 @@ public class GenericConversionService implements ConversionService, ConverterReg
 
 <link rel='canonical' href='https://yanghaoyu.xyz/tags/docs/flora/ioc/implements/type-convert/genericconversionservice/'>
 
-<link rel="stylesheet" href="/scss/style.min.be7bdd4e56c8a6c3c4d30c70154e7694c74256238402d9fd178f53754c079396.css"><meta property='og:title' content='GenericConversionService'>
+<link rel="stylesheet" href="/scss/style.min.c5e3a0e1ef9e4132087107b323b39421c5a9148668da197430042f404845d381.css"><meta property='og:title' content='GenericConversionService'>
 <meta property='og:description' content='GenericConversionService 内部存了所有的 GenericConverter (Converter,ConverterFactory都要适配GenericConverter) 封装了一些操作, 主要向外提供了 convert 和 canConvert 两个接口
 public class GenericConversionService implements ConversionService, ConverterRegistry { private Map&amp;lt;GenericConverter.ConvertiblePair, GenericConverter&amp;gt; converters = new HashMap&amp;lt;&amp;gt;(); @Override public boolean canConvert(Class&amp;lt;?&amp;gt; sourceType, Class&amp;lt;?&amp;gt; targetType) { return getConverter(sourceType, targetType) != null; } @Override public &amp;lt;T&amp;gt; T convert(Object source, Class&amp;lt;T&amp;gt; targetType) { Class&amp;lt;?&amp;gt; sourceType = source.getClass(); GenericConverter converter = getConverter(sourceType, targetType); if (converter == null) { throw new RuntimeException(&amp;#34;find no converter to convert &amp;#34; &#43; sourceType &#43; &amp;#34; to &amp;#34; &#43; targetType); } return (T) converter.'>
 <meta property='og:url' content='https://yanghaoyu.xyz/tags/docs/flora/ioc/implements/type-convert/genericconversionservice/'>
@@ -915,6 +915,8 @@ public class GenericConversionService implements ConversionService, ConverterReg
         if (document.readyState === "complete") NProgress.done();
     });
 </script>
+
+
     </body>
 
 

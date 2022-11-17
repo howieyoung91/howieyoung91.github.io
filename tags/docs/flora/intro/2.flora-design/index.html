@@ -7,7 +7,7 @@ public class PropertyValue { // 属性的名字 private final String name; // �
 
 <link rel='canonical' href='https://yanghaoyu.xyz/tags/docs/flora/intro/2.flora-design/'>
 
-<link rel="stylesheet" href="/scss/style.min.be7bdd4e56c8a6c3c4d30c70154e7694c74256238402d9fd178f53754c079396.css"><meta property='og:title' content='基本设计'>
+<link rel="stylesheet" href="/scss/style.min.c5e3a0e1ef9e4132087107b323b39421c5a9148668da197430042f404845d381.css"><meta property='og:title' content='基本设计'>
 <meta property='og:description' content='基本思路: 编写配置声明Bean, 在配置中发现Bean从而生成BeanDefinition,BeanFactory通过BeanDefinition生产出对应的Bean
 BeanDefinition BeanDefinition 表示一个Bean的定义, BeanFactory通过BeanDefinition生成对应的Bean
 public class PropertyValue { // 属性的名字 private final String name; // 属性的值 private final Object value; } public class BeanDefinition { // bean 的类型 private Class beanClass; // bean 的属性 private PropertyValues propertyValues; // 初始化方法名字 private String initMethodName; // 销毁方法名字 private String destroyMethodName; // 是否是单例 private boolean singleton = true; // 是否是多例 private boolean prototype = false; // 代理配置类对应的 Bean 的名字, 用于实现 @Bean @Configuration private String configurationClassBeanName = null; // 工厂方法, 用于实现 @Bean @Configuration private Method factoryMethod = null; } Resource Resource 代表了一个文件'>
@@ -679,6 +679,8 @@ public class PropertyValue { // 属性的名字 private final String name; // �
         if (document.readyState === "complete") NProgress.done();
     });
 </script>
+
+
     </body>
 
 
