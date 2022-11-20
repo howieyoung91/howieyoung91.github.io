@@ -18,7 +18,7 @@ getBean用于从容器中获取Bean containsBean 容器中是否存在Bean(可�
 <meta name="twitter:description" content="BeanFactory是工厂模式的体现, 它接受一系列BeanDefinition并以此生成对应的Bean
 BeanFactory BeanFactory是一个接口
 getBean用于从容器中获取Bean containsBean 容器中是否存在Bean(可以判断多例) containsSingletonBean 容器中是否存在单例Bean(多例不存在) public interface BeanFactory { Object getBean(String name) throws BeansException; Object getBean(String name, Object... args) throws BeansException; &amp;lt;T&amp;gt; T getBean(String name, Class&amp;lt;T&amp;gt; requiredType); boolean containsBean(String name); boolean containsSingletonBean(String name); } // ListableBeanFactory 拓展了 BeanFactory public interface ListableBeanFactory extends BeanFactory { /** * 按照类型返回 Bean 实例 */ &amp;lt;T&amp;gt; Map&amp;lt;String, T&amp;gt; getBeansOfType(Class&amp;lt;T&amp;gt; type) throws BeansException; /** * 返回注册表中所有的Bean名称 */ String[] getBeanDefinitionNames(); } ConfigurableBeanFactory ConfigurableBeanFactory 声明了一系列方法,为BeanFactory提供更多的功能">
-    <link rel="shortcut icon" href="/img/favicon.ico" />
+    <link rel="shortcut icon" href="/assets/img/favicon.ico" />
 
   
     </head>
@@ -64,7 +64,7 @@ getBean用于从容器中获取Bean containsBean 容器中是否存在Bean(可�
                     
                     
                         
-                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                        <img src="/img/avatar_hua20f156df935cf86424dc7825c362ff0_232994_300x0_resize_box_3.png" width="300"
                             height="300" class="site-logo" loading="lazy" alt="Avatar">
                     
                 

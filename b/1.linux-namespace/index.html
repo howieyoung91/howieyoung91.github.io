@@ -318,7 +318,7 @@
 
 
                 <time class="article-time--reading">
-                    7 minute read
+                    8 minute read
                 </time>
             </div>
         
@@ -378,88 +378,87 @@
 </tbody>
 </table></div>
 <h3 id="相关的-system-call">相关的 System Call</h3>
-<!-- clone 函数不是 POSIX 接口函数，不能跨平台使用，包含头文件前，必须定义 `#define _GNU_SOURCE` -->
 <ol start="0">
 <li><code>clone()</code> 创建新进程，可以指定新进程的 Namespace</li>
 </ol>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">clone</span><span class="p">(</span><span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">fn</span><span class="p">)(</span><span class="kt">void</span><span class="o">*</span> <span class="n">arg</span><span class="p">),</span> <span class="kt">void</span><span class="o">*</span> <span class="n">child_stack</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">,</span> <span class="kt">void</span><span class="o">*</span> <span class="n">arg</span><span class="p">,</span> <span class="p">...);</span>
-</span></span></code></pre></div><ol>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="kt">int</span> <span class="nf">clone</span><span class="p">(</span><span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">fn</span><span class="p">)(</span><span class="kt">void</span><span class="o">*</span> <span class="n">arg</span><span class="p">),</span> <span class="kt">void</span><span class="o">*</span> <span class="n">child_stack</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">,</span> <span class="kt">void</span><span class="o">*</span> <span class="n">arg</span><span class="p">,</span> <span class="p">...);</span>
+</code></pre></div><ol>
 <li><code>unshare()</code> 把某个进程移出指定的 Namespace</li>
 </ol>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">unshare</span><span class="p">(</span><span class="kt">int</span> <span class="n">flags</span><span class="p">);</span>
-</span></span></code></pre></div><ol start="2">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="kt">int</span> <span class="nf">unshare</span><span class="p">(</span><span class="kt">int</span> <span class="n">flags</span><span class="p">);</span>
+</code></pre></div><ol start="2">
 <li><code>setns()</code> 把某个进程放入指定的 Namespace</li>
 </ol>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">setns</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="kt">int</span> <span class="n">nstype</span><span class="p">);</span>
-</span></span></code></pre></div><!-- ```shell
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="kt">int</span> <span class="nf">setns</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="kt">int</span> <span class="n">nstype</span><span class="p">);</span>
+</code></pre></div><!-- ```shell
 ls -l /proc/$$/ns | awk '{print $1,$(NF-2),$(NF-1),$NF}'
 ``` -->
 <hr>
 <h2 id="uts-namespace">UTS Namespace</h2>
 <p>UTS Namespace 主要用来隔离 nodename 和 domainname。
 在 Golang 中可以通过指定 cmd.SysProcAttr 来设置 Namespace</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-golang" data-lang="golang"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="kd">var</span> <span class="nx">cmd</span> <span class="p">=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">Command</span><span class="p">(</span><span class="s">&#34;sh&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">SysProcAttr</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">syscall</span><span class="p">.</span><span class="nx">SysProcAttr</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">Cloneflags</span><span class="p">:</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUTS</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdin</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdout</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stderr</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">cmd</span><span class="p">.</span><span class="nf">Run</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div><h3 id="验证-hostname-被隔离">验证 hostname 被隔离</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-golang" data-lang="golang"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">cmd</span> <span class="p">=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">Command</span><span class="p">(</span><span class="s">&#34;sh&#34;</span><span class="p">)</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">SysProcAttr</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">syscall</span><span class="p">.</span><span class="nx">SysProcAttr</span><span class="p">{</span>
+        <span class="nx">Cloneflags</span><span class="p">:</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUTS</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdin</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdout</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stderr</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">cmd</span><span class="p">.</span><span class="nf">Run</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div><h3 id="验证-hostname-被隔离">验证 hostname 被隔离</h3>
 <p>在进程中：</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">$ <span class="nb">echo</span> <span class="nv">$$</span>
-</span></span><span class="line"><span class="cl"><span class="m">93</span>
-</span></span><span class="line"><span class="cl">$ readlink /proc/93/ns/uts
-</span></span><span class="line"><span class="cl">uts:<span class="o">[</span>4026532307<span class="o">]</span>
-</span></span></code></pre></div><p>在外部的 Terminal 中，
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">$ <span class="nb">echo</span> <span class="nv">$$</span>
+<span class="m">93</span>
+$ readlink /proc/93/ns/uts
+uts:<span class="o">[</span>4026532307<span class="o">]</span>
+</code></pre></div><p>在外部的 Terminal 中，
 同样执行上述代码可以发现两个线程的 UTS Namespace 是不一样的，这就表明我们的程序被隔离开了，
 因此我们在进程内修改 hostname 那么也不会影响到其他的进程的 hostname。</p>
 <p>我的代码如下：</p>
 <ul>
 <li>main:</li>
 </ul>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># main</span>
-</span></span><span class="line"><span class="cl">$ hostname <span class="c1"># 先查看一下 hostname</span>
-</span></span><span class="line"><span class="cl">bfcbd31e5fb7
-</span></span><span class="line"><span class="cl">$ hostname -b howieyoung <span class="c1"># 修改 hostname</span>
-</span></span><span class="line"><span class="cl">$ hostname <span class="c1"># 再次查看 hostname，确保已经修改</span>
-</span></span><span class="line"><span class="cl">howieyoung
-</span></span></code></pre></div><ul>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="c1"># main</span>
+$ hostname <span class="c1"># 先查看一下 hostname</span>
+bfcbd31e5fb7
+$ hostname -b howieyoung <span class="c1"># 修改 hostname</span>
+$ hostname <span class="c1"># 再次查看 hostname，确保已经修改</span>
+howieyoung
+</code></pre></div><ul>
 <li>linux terminal:</li>
 </ul>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># linux terminal</span>
-</span></span><span class="line"><span class="cl">$ hostname <span class="c1"># 在 main 进程修改 hostname 之前查看一下</span>
-</span></span><span class="line"><span class="cl">bfcbd31e5fb7
-</span></span><span class="line"><span class="cl">$ hostname <span class="c1"># 在 main 进程修改 hostname 之后查看一下</span>
-</span></span><span class="line"><span class="cl">bfcbd31e5fb7
-</span></span></code></pre></div><p>两次 hostname 是一样的，这也能验证 main 线程被隔离了<br>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="c1"># linux terminal</span>
+$ hostname <span class="c1"># 在 main 进程修改 hostname 之前查看一下</span>
+bfcbd31e5fb7
+$ hostname <span class="c1"># 在 main 进程修改 hostname 之后查看一下</span>
+bfcbd31e5fb7
+</code></pre></div><p>两次 hostname 是一样的，这也能验证 main 线程被隔离了<br>
 同时可以看到我们执行 <code>echo $$</code> 获取到的当前进程的 ID 是 93，这似乎有些不正确，
 我们期望在容器内把 main 线程看作根结点。这是因为 UTS Namespace 并不会把 PID
 隔离开。为了完成这件事，我们需要使用 PID Namespace。</p>
 <h2 id="pid-namespace">PID Namespace</h2>
 <p>我们添加上 PID Namespace，再次运行。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="kd">var</span> <span class="nx">cmd</span> <span class="p">=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">Command</span><span class="p">(</span><span class="s">&#34;sh&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">SysProcAttr</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">syscall</span><span class="p">.</span><span class="nx">SysProcAttr</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">Cloneflags</span><span class="p">:</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUTS</span> <span class="p">|</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWPID</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdin</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdout</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stderr</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">cmd</span><span class="p">.</span><span class="nf">Run</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div><h3 id="验证-pid-被隔离">验证 PID 被隔离</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">cmd</span> <span class="p">=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">Command</span><span class="p">(</span><span class="s">&#34;sh&#34;</span><span class="p">)</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">SysProcAttr</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">syscall</span><span class="p">.</span><span class="nx">SysProcAttr</span><span class="p">{</span>
+        <span class="nx">Cloneflags</span><span class="p">:</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUTS</span> <span class="p">|</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWPID</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdin</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdout</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stderr</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">cmd</span><span class="p">.</span><span class="nf">Run</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div><h3 id="验证-pid-被隔离">验证 PID 被隔离</h3>
 <p>执行 <code>echo $$</code></p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">$ <span class="nb">echo</span> <span class="nv">$$</span>
-</span></span><span class="line"><span class="cl"><span class="m">1</span>
-</span></span></code></pre></div><p>当前进程的 id 变成了 1，表明 pid 已经隔离</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">$ <span class="nb">echo</span> <span class="nv">$$</span>
+<span class="m">1</span>
+</code></pre></div><p>当前进程的 id 变成了 1，表明 pid 已经隔离</p>
 <h2 id="ipc-namespace">IPC Namespace</h2>
 <p>IPC，进程间通信，主要包括包括 <code>Pipe</code> <code>Socket</code> <code>Semaphore</code> <code>MQ</code> <code>Signal</code> <code>mmap</code> 等。</p>
 <blockquote>
@@ -471,94 +470,94 @@ ls -l /proc/$$/ns | awk '{print $1,$(NF-2),$(NF-1),$NF}'
 </blockquote>
 <p>IPC Namespace 用来隔离 System V IPC 和 POSIX message queues。 每一个 IPC Namespace
 都有自己的 System V IPC 和 POSIX message queue。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="kd">var</span> <span class="nx">cmd</span> <span class="p">=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">Command</span><span class="p">(</span><span class="s">&#34;sh&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">SysProcAttr</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">syscall</span><span class="p">.</span><span class="nx">SysProcAttr</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">Cloneflags</span><span class="p">:</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUTS</span> <span class="p">|</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWIPC</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdin</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdout</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stderr</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">cmd</span><span class="p">.</span><span class="nf">Run</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div><h3 id="验证-ipc-被隔离">验证 IPC 被隔离</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">cmd</span> <span class="p">=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">Command</span><span class="p">(</span><span class="s">&#34;sh&#34;</span><span class="p">)</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">SysProcAttr</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">syscall</span><span class="p">.</span><span class="nx">SysProcAttr</span><span class="p">{</span>
+        <span class="nx">Cloneflags</span><span class="p">:</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUTS</span> <span class="p">|</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWIPC</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdin</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdout</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stderr</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">cmd</span><span class="p">.</span><span class="nf">Run</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div><h3 id="验证-ipc-被隔离">验证 IPC 被隔离</h3>
 <p>首先在 main 进程下和 linux terminal 内分别运行 <code>ipcs -a</code> 查看 ipc 情况</p>
 <ul>
 <li>main：</li>
 </ul>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># main</span>
-</span></span><span class="line"><span class="cl">$ ipcs -a
-</span></span><span class="line"><span class="cl">------ Message Queues --------
-</span></span><span class="line"><span class="cl">key        msqid      owner      perms      used-bytes   messages
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">------ Shared Memory Segments --------
-</span></span><span class="line"><span class="cl">key        shmid      owner      perms      bytes      nattch     status
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">------ Semaphore Arrays --------
-</span></span><span class="line"><span class="cl">key        semid      owner      perms      nsems
-</span></span></code></pre></div><ul>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="c1"># main</span>
+$ ipcs -a
+------ Message Queues --------
+key        msqid      owner      perms      used-bytes   messages
+
+------ Shared Memory Segments --------
+key        shmid      owner      perms      bytes      nattch     status
+
+------ Semaphore Arrays --------
+key        semid      owner      perms      nsems
+</code></pre></div><ul>
 <li>linux terminal</li>
 </ul>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># linux terminal</span>
-</span></span><span class="line"><span class="cl">$ ipcs -a
-</span></span><span class="line"><span class="cl">------ Message Queues --------
-</span></span><span class="line"><span class="cl">key        msqid      owner      perms      used-bytes   messages
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">------ Shared Memory Segments --------
-</span></span><span class="line"><span class="cl">key        shmid      owner      perms      bytes      nattch     status
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">------ Semaphore Arrays --------
-</span></span><span class="line"><span class="cl">key        semid      owner      perms      nsems
-</span></span></code></pre></div><p>可以看到都没有任何的 IPC</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="c1"># linux terminal</span>
+$ ipcs -a
+------ Message Queues --------
+key        msqid      owner      perms      used-bytes   messages
+
+------ Shared Memory Segments --------
+key        shmid      owner      perms      bytes      nattch     status
+
+------ Semaphore Arrays --------
+key        semid      owner      perms      nsems
+</code></pre></div><p>可以看到都没有任何的 IPC</p>
 <p>在 main 进程下执行 <code>ipcmk -Q</code> 创建一个 mq，然后查看</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># main</span>
-</span></span><span class="line"><span class="cl">$ ipcmk -Q
-</span></span><span class="line"><span class="cl">Message queue id: <span class="m">0</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ ipcs -a <span class="c1"># 查看 ipc 情况</span>
-</span></span><span class="line"><span class="cl">------ Message Queues --------
-</span></span><span class="line"><span class="cl">key        msqid      owner      perms      used-bytes   messages
-</span></span><span class="line"><span class="cl">0xab342dbe <span class="m">0</span>          root       <span class="m">644</span>        <span class="m">0</span>            <span class="m">0</span>           <span class="c1"># 成功创建</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">------ Shared Memory Segments --------
-</span></span><span class="line"><span class="cl">key        shmid      owner      perms      bytes      nattch     status
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">------ Semaphore Arrays --------
-</span></span><span class="line"><span class="cl">key        semid      owner      perms      nsems
-</span></span></code></pre></div><p>打开 terminal，执行 <code>ipcs -a</code> 可以发现在 root Namespace 中是不存在这个 MQ 的，
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="c1"># main</span>
+$ ipcmk -Q
+Message queue id: <span class="m">0</span>
+
+$ ipcs -a <span class="c1"># 查看 ipc 情况</span>
+------ Message Queues --------
+key        msqid      owner      perms      used-bytes   messages
+0xab342dbe <span class="m">0</span>          root       <span class="m">644</span>        <span class="m">0</span>            <span class="m">0</span>           <span class="c1"># 成功创建</span>
+
+------ Shared Memory Segments --------
+key        shmid      owner      perms      bytes      nattch     status
+
+------ Semaphore Arrays --------
+key        semid      owner      perms      nsems
+</code></pre></div><p>打开 terminal，执行 <code>ipcs -a</code> 可以发现在 root Namespace 中是不存在这个 MQ 的，
 这就表示我们使用 IPC Namespace 成功地把两个进程的通信资源隔离开了</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># linux terminal</span>
-</span></span><span class="line"><span class="cl">$ ipcs -a
-</span></span><span class="line"><span class="cl">------ Message Queues --------
-</span></span><span class="line"><span class="cl">key        msqid      owner      perms      used-bytes   messages
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">------ Shared Memory Segments --------
-</span></span><span class="line"><span class="cl">key        shmid      owner      perms      bytes      nattch     status
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">------ Semaphore Arrays --------
-</span></span><span class="line"><span class="cl">key        semid      owner      perms      nsems
-</span></span></code></pre></div><h2 id="mount-namespace">Mount Namespace</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="c1"># linux terminal</span>
+$ ipcs -a
+------ Message Queues --------
+key        msqid      owner      perms      used-bytes   messages
+
+------ Shared Memory Segments --------
+key        shmid      owner      perms      bytes      nattch     status
+
+------ Semaphore Arrays --------
+key        semid      owner      perms      nsems
+</code></pre></div><h2 id="mount-namespace">Mount Namespace</h2>
 <p>Mount Namespace 可以通过隔离挂载点，为各个进程提供单独的文件视图。
 在不同 Namespace 的进程中， 看到的文件系统层次是不一样的。在 Mount Namespace 中调用
 <code>mount()</code> <code>umount() </code>仅仅只会影响当前 Namespace 内的文件系统 ，而对全局的文件系统是没有影响的。</p>
 <ol>
 <li>mount/umount 函数原型：</li>
 </ol>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;sys/mount.h&gt;</span><span class="cp">
-</span></span></span><span class="line"><span class="cl"><span class="cp"></span><span class="kt">int</span> <span class="nf">mount</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">source</span><span class="p">,</span>         <span class="k">const</span> <span class="kt">char</span><span class="o">*</span>   <span class="n">target</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">          <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">filesystemtype</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">mountflags</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">          <span class="k">const</span> <span class="kt">void</span><span class="o">*</span> <span class="n">data</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">umount</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">file</span><span class="p">);</span>
-</span></span></code></pre></div><ol start="2">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="cp">#include</span> <span class="cpf">&lt;sys/mount.h&gt;</span><span class="cp">
+</span><span class="cp"></span><span class="kt">int</span> <span class="nf">mount</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">source</span><span class="p">,</span>         <span class="k">const</span> <span class="kt">char</span><span class="o">*</span>   <span class="n">target</span><span class="p">,</span>
+          <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">filesystemtype</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">mountflags</span><span class="p">,</span>
+          <span class="k">const</span> <span class="kt">void</span><span class="o">*</span> <span class="n">data</span><span class="p">);</span>
+
+<span class="kt">int</span> <span class="nf">umount</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">file</span><span class="p">);</span>
+</code></pre></div><ol start="2">
 <li>shell</li>
 </ol>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">mount <span class="o">[</span>-t 系统类型<span class="o">]</span> <span class="o">[</span>-L 卷标名<span class="o">]</span> <span class="o">[</span>-o 特殊选项<span class="o">]</span> <span class="o">[</span>-n<span class="o">]</span> 设备文件名 挂载点
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">umount 挂载点
-</span></span></code></pre></div> <!-- > `mount()` attaches the filesystem specified by `source` (which is
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">mount <span class="o">[</span>-t 系统类型<span class="o">]</span> <span class="o">[</span>-L 卷标名<span class="o">]</span> <span class="o">[</span>-o 特殊选项<span class="o">]</span> <span class="o">[</span>-n<span class="o">]</span> 设备文件名 挂载点
+
+umount 挂载点
+</code></pre></div> <!-- > `mount()` attaches the filesystem specified by `source` (which is
  > often a pathname referring to a device, but can also be the
  > pathname of a directory or file, or a dummy string) to the
  > location (a directory or file) specified by the pathname in
@@ -599,157 +598,158 @@ ls -l /proc/$$/ns | awk '{print $1,$(NF-2),$(NF-1),$NF}'
  > `mount()`, as described below. -->
 <!-- ![file-system](/assets/img/file-system.drawio.png) -->
 <p>go 代码如下：</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="kd">var</span> <span class="nx">cmd</span> <span class="p">=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">Command</span><span class="p">(</span><span class="s">&#34;sh&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">SysProcAttr</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">syscall</span><span class="p">.</span><span class="nx">SysProcAttr</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">Cloneflags</span><span class="p">:</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUTS</span> <span class="p">|</span>
-</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWIPC</span> <span class="p">|</span>
-</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWPID</span> <span class="p">|</span>
-</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWNS</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdin</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdout</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stderr</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">cmd</span><span class="p">.</span><span class="nf">Run</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div><h3 id="验证挂载点被隔离">验证挂载点被隔离</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">cmd</span> <span class="p">=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">Command</span><span class="p">(</span><span class="s">&#34;sh&#34;</span><span class="p">)</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">SysProcAttr</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">syscall</span><span class="p">.</span><span class="nx">SysProcAttr</span><span class="p">{</span>
+        <span class="nx">Cloneflags</span><span class="p">:</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUTS</span> <span class="p">|</span>
+            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWIPC</span> <span class="p">|</span>
+            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWPID</span> <span class="p">|</span>
+            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWNS</span>
+    <span class="p">}</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdin</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdout</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stderr</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">cmd</span><span class="p">.</span><span class="nf">Run</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div><h3 id="验证挂载点被隔离">验证挂载点被隔离</h3>
 <p>首先在 Linux Terminal 下执行 <code>ps -ef</code>，这个命令会从 /proc 目录下读取数据获取到进程信息。</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># linux terminal</span>
-</span></span><span class="line"><span class="cl">$ ps -ef
-</span></span><span class="line"><span class="cl">UID          PID    PPID  C STIME TTY      TIME CMD
-</span></span><span class="line"><span class="cl">root           <span class="m">1</span>       <span class="m">0</span>  <span class="m">0</span> 14:39 ?        00:00:00 /sbin/init
-</span></span><span class="line"><span class="cl">root          <span class="m">25</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/lib/systemd/systemd-journald
-</span></span><span class="line"><span class="cl">root          <span class="m">30</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/lib/systemd/systemd-udevd
-</span></span><span class="line"><span class="cl">dbus          <span class="m">55</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/bin/dbus-daemon --system --address<span class="o">=</span>systemd: --nofo
-</span></span><span class="line"><span class="cl">root          <span class="m">56</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/sbin/sshd -D -oCiphers<span class="o">=</span>aes256-gcm@openssh.com,chac
-</span></span><span class="line"><span class="cl">root          <span class="m">66</span>      <span class="m">56</span>  <span class="m">0</span> 14:40 ?        00:00:00 sshd: root <span class="o">[</span>priv<span class="o">]</span>
-</span></span><span class="line"><span class="cl">root          <span class="m">68</span>      <span class="m">66</span>  <span class="m">0</span> 14:40 ?        00:00:00 sshd: root@pts/1
-</span></span><span class="line"><span class="cl">root          <span class="m">69</span>      <span class="m">68</span>  <span class="m">0</span> 14:40 pts/1    00:00:00 -bash
-</span></span><span class="line"><span class="cl">root          <span class="m">82</span>      <span class="m">69</span>  <span class="m">0</span> 14:40 pts/1    00:00:00 ps -ef
-</span></span></code></pre></div><p>回到 main 进程中，继续使用 <code>ps -ef</code> 先看一下进程<br>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="c1"># linux terminal</span>
+$ ps -ef
+UID          PID    PPID  C STIME TTY      TIME CMD
+root           <span class="m">1</span>       <span class="m">0</span>  <span class="m">0</span> 14:39 ?        00:00:00 /sbin/init
+root          <span class="m">25</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/lib/systemd/systemd-journald
+root          <span class="m">30</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/lib/systemd/systemd-udevd
+dbus          <span class="m">55</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/bin/dbus-daemon --system --address<span class="o">=</span>systemd: --nofo
+root          <span class="m">56</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/sbin/sshd -D -oCiphers<span class="o">=</span>aes256-gcm@openssh.com,chac
+root          <span class="m">66</span>      <span class="m">56</span>  <span class="m">0</span> 14:40 ?        00:00:00 sshd: root <span class="o">[</span>priv<span class="o">]</span>
+root          <span class="m">68</span>      <span class="m">66</span>  <span class="m">0</span> 14:40 ?        00:00:00 sshd: root@pts/1
+root          <span class="m">69</span>      <span class="m">68</span>  <span class="m">0</span> 14:40 pts/1    00:00:00 -bash
+root          <span class="m">82</span>      <span class="m">69</span>  <span class="m">0</span> 14:40 pts/1    00:00:00 ps -ef
+</code></pre></div><p>回到 main 进程中，继续使用 <code>ps -ef</code> 先看一下进程<br>
 观察一下，可以发现目前 main 可以看到的文件视图是和 linux 其他是一样的<br>
 使用 <code>mount --make-rprivate /</code> 把挂载点设置私有，防止 <code>mount</code> 影响到其他 namespace<br>
 执行 <code>mount -t proc proc /proc</code>，把 proc 文件系统挂在到 /proc 目录下</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># main</span>
-</span></span><span class="line"><span class="cl">$ ps -ef
-</span></span><span class="line"><span class="cl">UID          PID    PPID  C STIME TTY      TIME CMD
-</span></span><span class="line"><span class="cl">root           <span class="m">1</span>       <span class="m">0</span>  <span class="m">0</span> 14:39 ?        00:00:00 /sbin/init
-</span></span><span class="line"><span class="cl">root          <span class="m">25</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/lib/systemd/systemd-jou
-</span></span><span class="line"><span class="cl">root          <span class="m">30</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/lib/systemd/systemd-ude
-</span></span><span class="line"><span class="cl">dbus          <span class="m">55</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/bin/dbus-daemon --syste
-</span></span><span class="line"><span class="cl">root          <span class="m">56</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/sbin/sshd -D -oCiphers<span class="o">=</span>
-</span></span><span class="line"><span class="cl">root          <span class="m">66</span>      <span class="m">56</span>  <span class="m">0</span> 14:40 ?        00:00:00 sshd: root <span class="o">[</span>priv<span class="o">]</span>
-</span></span><span class="line"><span class="cl">root          <span class="m">68</span>      <span class="m">66</span>  <span class="m">0</span> 14:40 ?        00:00:00 sshd: root@pts/1
-</span></span><span class="line"><span class="cl">root          <span class="m">69</span>      <span class="m">68</span>  <span class="m">0</span> 14:40 pts/1    00:00:00 -bash
-</span></span><span class="line"><span class="cl">root          <span class="m">83</span>      <span class="m">56</span>  <span class="m">0</span> 14:41 ?        00:00:00 sshd: root <span class="o">[</span>priv<span class="o">]</span>
-</span></span><span class="line"><span class="cl">root          <span class="m">85</span>      <span class="m">83</span>  <span class="m">0</span> 14:41 ?        00:00:00 sshd: root@pts/2
-</span></span><span class="line"><span class="cl">root         <span class="m">140</span>      <span class="m">85</span>  <span class="m">0</span> 14:41 pts/2    00:00:00 /root/porrima/executables-WI
-</span></span><span class="line"><span class="cl">root         <span class="m">153</span>     <span class="m">140</span>  <span class="m">0</span> 14:41 pts/2    00:00:00 sh
-</span></span><span class="line"><span class="cl">root         <span class="m">154</span>     <span class="m">153</span>  <span class="m">0</span> 14:41 pts/2    00:00:00 ps -ef
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ mount --make-rprivate /  <span class="c1"># 把根节点设置私有，防止 shared subtree 影响到其他 namespace</span>
-</span></span><span class="line"><span class="cl">$ mount -t proc proc /proc <span class="c1"># 把 proc 挂在到  /proc 目录下</span>
-</span></span></code></pre></div><p>在 main 进程内执行 <code>ps -ef</code>，读取一下 /proc 下的进程信息，可以发现进程少了非常多，说明 <code>mount</code> 生效</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># main</span>
-</span></span><span class="line"><span class="cl">$ ps -ef
-</span></span><span class="line"><span class="cl">UID          PID    PPID  C STIME TTY      TIME CMD
-</span></span><span class="line"><span class="cl">root           <span class="m">1</span>       <span class="m">0</span>  <span class="m">0</span> 14:41 pts/2    00:00:00 sh
-</span></span><span class="line"><span class="cl">root           <span class="m">7</span>       <span class="m">1</span>  <span class="m">0</span> 14:43 pts/2    00:00:00 ps -ef
-</span></span></code></pre></div><p>回到 Linux Terminal 中，使用 <code>ps -ef</code> 查看进程</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># linux terminal</span>
-</span></span><span class="line"><span class="cl">$ ps -ef
-</span></span><span class="line"><span class="cl">UID          PID    PPID  C STIME TTY      TIME CMD
-</span></span><span class="line"><span class="cl">root           <span class="m">1</span>       <span class="m">0</span>  <span class="m">0</span> 14:39 ?        00:00:00 /sbin/init
-</span></span><span class="line"><span class="cl">root          <span class="m">25</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/lib/systemd/systemd-journald
-</span></span><span class="line"><span class="cl">root          <span class="m">30</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/lib/systemd/systemd-udevd
-</span></span><span class="line"><span class="cl">dbus          <span class="m">55</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/bin/dbus-daemon --system --address<span class="o">=</span>systemd: --nofo
-</span></span><span class="line"><span class="cl">root          <span class="m">56</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/sbin/sshd -D -oCiphers<span class="o">=</span>aes256-gcm@openssh.com,chac
-</span></span><span class="line"><span class="cl">root          <span class="m">66</span>      <span class="m">56</span>  <span class="m">0</span> 14:40 ?        00:00:00 sshd: root <span class="o">[</span>priv<span class="o">]</span>
-</span></span><span class="line"><span class="cl">root          <span class="m">68</span>      <span class="m">66</span>  <span class="m">0</span> 14:40 ?        00:00:00 sshd: root@pts/1
-</span></span><span class="line"><span class="cl">root          <span class="m">69</span>      <span class="m">68</span>  <span class="m">0</span> 14:40 pts/1    00:00:00 -bash
-</span></span><span class="line"><span class="cl">root          <span class="m">83</span>      <span class="m">56</span>  <span class="m">0</span> 14:41 ?        00:00:00 sshd: root <span class="o">[</span>priv<span class="o">]</span>
-</span></span><span class="line"><span class="cl">root          <span class="m">85</span>      <span class="m">83</span>  <span class="m">0</span> 14:41 ?        00:00:00 sshd: root@pts/2
-</span></span><span class="line"><span class="cl">root         <span class="m">140</span>      <span class="m">85</span>  <span class="m">0</span> 14:41 pts/2    00:00:00 /root/porrima/executables-WIPxpUrEfN/___docker_linux_li
-</span></span><span class="line"><span class="cl">root         <span class="m">153</span>     <span class="m">140</span>  <span class="m">0</span> 14:41 pts/2    00:00:00 sh
-</span></span><span class="line"><span class="cl">root         <span class="m">162</span>      <span class="m">69</span>  <span class="m">0</span> 14:43 pts/1    00:00:00 ps -ef
-</span></span></code></pre></div><p>可以发现在 Linux 本地进程信息并未改变，这就表明 Mount Namespace 成功隔离了 main 的文件视图</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="c1"># main</span>
+$ ps -ef
+UID          PID    PPID  C STIME TTY      TIME CMD
+root           <span class="m">1</span>       <span class="m">0</span>  <span class="m">0</span> 14:39 ?        00:00:00 /sbin/init
+root          <span class="m">25</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/lib/systemd/systemd-jou
+root          <span class="m">30</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/lib/systemd/systemd-ude
+dbus          <span class="m">55</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/bin/dbus-daemon --syste
+root          <span class="m">56</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/sbin/sshd -D -oCiphers<span class="o">=</span>
+root          <span class="m">66</span>      <span class="m">56</span>  <span class="m">0</span> 14:40 ?        00:00:00 sshd: root <span class="o">[</span>priv<span class="o">]</span>
+root          <span class="m">68</span>      <span class="m">66</span>  <span class="m">0</span> 14:40 ?        00:00:00 sshd: root@pts/1
+root          <span class="m">69</span>      <span class="m">68</span>  <span class="m">0</span> 14:40 pts/1    00:00:00 -bash
+root          <span class="m">83</span>      <span class="m">56</span>  <span class="m">0</span> 14:41 ?        00:00:00 sshd: root <span class="o">[</span>priv<span class="o">]</span>
+root          <span class="m">85</span>      <span class="m">83</span>  <span class="m">0</span> 14:41 ?        00:00:00 sshd: root@pts/2
+root         <span class="m">140</span>      <span class="m">85</span>  <span class="m">0</span> 14:41 pts/2    00:00:00 /root/porrima/executables-WI
+root         <span class="m">153</span>     <span class="m">140</span>  <span class="m">0</span> 14:41 pts/2    00:00:00 sh
+root         <span class="m">154</span>     <span class="m">153</span>  <span class="m">0</span> 14:41 pts/2    00:00:00 ps -ef
+
+$ mount --make-rprivate /  <span class="c1"># 把根节点设置私有，防止 shared subtree 影响到其他 namespace</span>
+$ mount -t proc proc /proc <span class="c1"># 把 proc 挂在到  /proc 目录下</span>
+</code></pre></div><p>在 main 进程内执行 <code>ps -ef</code>，读取一下 /proc 下的进程信息，可以发现进程少了非常多，说明 <code>mount</code> 生效</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="c1"># main</span>
+$ ps -ef
+UID          PID    PPID  C STIME TTY      TIME CMD
+root           <span class="m">1</span>       <span class="m">0</span>  <span class="m">0</span> 14:41 pts/2    00:00:00 sh
+root           <span class="m">7</span>       <span class="m">1</span>  <span class="m">0</span> 14:43 pts/2    00:00:00 ps -ef
+</code></pre></div><p>回到 Linux Terminal 中，使用 <code>ps -ef</code> 查看进程</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="c1"># linux terminal</span>
+$ ps -ef
+UID          PID    PPID  C STIME TTY      TIME CMD
+root           <span class="m">1</span>       <span class="m">0</span>  <span class="m">0</span> 14:39 ?        00:00:00 /sbin/init
+root          <span class="m">25</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/lib/systemd/systemd-journald
+root          <span class="m">30</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/lib/systemd/systemd-udevd
+dbus          <span class="m">55</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/bin/dbus-daemon --system --address<span class="o">=</span>systemd: --nofo
+root          <span class="m">56</span>       <span class="m">1</span>  <span class="m">0</span> 14:39 ?        00:00:00 /usr/sbin/sshd -D -oCiphers<span class="o">=</span>aes256-gcm@openssh.com,chac
+root          <span class="m">66</span>      <span class="m">56</span>  <span class="m">0</span> 14:40 ?        00:00:00 sshd: root <span class="o">[</span>priv<span class="o">]</span>
+root          <span class="m">68</span>      <span class="m">66</span>  <span class="m">0</span> 14:40 ?        00:00:00 sshd: root@pts/1
+root          <span class="m">69</span>      <span class="m">68</span>  <span class="m">0</span> 14:40 pts/1    00:00:00 -bash
+root          <span class="m">83</span>      <span class="m">56</span>  <span class="m">0</span> 14:41 ?        00:00:00 sshd: root <span class="o">[</span>priv<span class="o">]</span>
+root          <span class="m">85</span>      <span class="m">83</span>  <span class="m">0</span> 14:41 ?        00:00:00 sshd: root@pts/2
+root         <span class="m">140</span>      <span class="m">85</span>  <span class="m">0</span> 14:41 pts/2    00:00:00 /root/porrima/executables-WIPxpUrEfN/___docker_linux_li
+root         <span class="m">153</span>     <span class="m">140</span>  <span class="m">0</span> 14:41 pts/2    00:00:00 sh
+root         <span class="m">162</span>      <span class="m">69</span>  <span class="m">0</span> 14:43 pts/1    00:00:00 ps -ef
+</code></pre></div><p>可以发现在 Linux 本地进程信息并未改变，这就表明 Mount Namespace 成功隔离了 main 的文件视图</p>
 <h2 id="user-namespace">User Namespace</h2>
 <p>User Namespace 用来是隔离用户的用户组 ID。<br>
 在 User Namespace 外的一个普通用户可以映射为一个 root 用户</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="kd">var</span> <span class="nx">cmd</span> <span class="p">=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">Command</span><span class="p">(</span><span class="s">&#34;sh&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">SysProcAttr</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">syscall</span><span class="p">.</span><span class="nx">SysProcAttr</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">Cloneflags</span><span class="p">:</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUTS</span> <span class="p">|</span>
-</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWIPC</span> <span class="p">|</span>
-</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWPID</span> <span class="p">|</span>
-</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWNS</span>  <span class="p">|</span>
-</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUSER</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdin</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdout</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stderr</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">cmd</span><span class="p">.</span><span class="nf">Run</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div><h3 id="验证-user-被隔离">验证 User 被隔离</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">cmd</span> <span class="p">=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">Command</span><span class="p">(</span><span class="s">&#34;sh&#34;</span><span class="p">)</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">SysProcAttr</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">syscall</span><span class="p">.</span><span class="nx">SysProcAttr</span><span class="p">{</span>
+        <span class="nx">Cloneflags</span><span class="p">:</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUTS</span> <span class="p">|</span>
+            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWIPC</span> <span class="p">|</span>
+            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWPID</span> <span class="p">|</span>
+            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWNS</span>  <span class="p">|</span>
+            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUSER</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdin</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdout</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stderr</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">cmd</span><span class="p">.</span><span class="nf">Run</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div><h3 id="验证-user-被隔离">验证 User 被隔离</h3>
 <p>分别在 main 和 linux terminal 执行 <code>id</code> 命令，查看当前用户是否相同</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># linux terminal</span>
-</span></span><span class="line"><span class="cl">$ whoami
-</span></span><span class="line"><span class="cl">root
-</span></span><span class="line"><span class="cl">$ id
-</span></span><span class="line"><span class="cl"><span class="nv">uid</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span> <span class="nv">groups</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span>
-</span></span></code></pre></div><div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># main</span>
-</span></span><span class="line"><span class="cl">$ whoami
-</span></span><span class="line"><span class="cl">nobody
-</span></span><span class="line"><span class="cl">$ id
-</span></span><span class="line"><span class="cl"><span class="nv">uid</span><span class="o">=</span>65534<span class="o">(</span>nobody<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>65534<span class="o">(</span>nobody<span class="o">)</span> <span class="nv">groups</span><span class="o">=</span>65534<span class="o">(</span>nobody<span class="o">)</span>
-</span></span></code></pre></div><p>可以发现两个 User 并不相同，这就表明 User 成功被隔离</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="c1"># linux terminal</span>
+$ whoami
+root
+$ id
+<span class="nv">uid</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span> <span class="nv">groups</span><span class="o">=</span>0<span class="o">(</span>root<span class="o">)</span>
+</code></pre></div><div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="c1"># main</span>
+$ whoami
+nobody
+$ id
+<span class="nv">uid</span><span class="o">=</span>65534<span class="o">(</span>nobody<span class="o">)</span> <span class="nv">gid</span><span class="o">=</span>65534<span class="o">(</span>nobody<span class="o">)</span> <span class="nv">groups</span><span class="o">=</span>65534<span class="o">(</span>nobody<span class="o">)</span>
+</code></pre></div><p>可以发现两个 User 并不相同，这就表明 User 成功被隔离</p>
 <h2 id="network-namespace">Network Namespace</h2>
 <p>Network Namespace 用来隔离网络栈<br>
 在 Network Namespace 中 <code>Network Device</code> <code>port</code> <code>Socket</code> <code>firewall</code>等网络环境都是独立的。</p>
 <p>代码如下：</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="kd">var</span> <span class="nx">cmd</span> <span class="p">=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">Command</span><span class="p">(</span><span class="s">&#34;sh&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">SysProcAttr</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">syscall</span><span class="p">.</span><span class="nx">SysProcAttr</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">Cloneflags</span><span class="p">:</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUTS</span> <span class="p">|</span>
-</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWIPC</span> <span class="p">|</span>
-</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWPID</span> <span class="p">|</span>
-</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWNS</span>  <span class="p">|</span>
-</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUSER</span><span class="p">|</span>
-</span></span><span class="line"><span class="cl">            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWNET</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdin</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdout</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stderr</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">cmd</span><span class="p">.</span><span class="nf">Run</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></div><h3 id="验证-network-是否被隔离">验证 Network 是否被隔离</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">cmd</span> <span class="p">=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">Command</span><span class="p">(</span><span class="s">&#34;sh&#34;</span><span class="p">)</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">SysProcAttr</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">syscall</span><span class="p">.</span><span class="nx">SysProcAttr</span><span class="p">{</span>
+        <span class="nx">Cloneflags</span><span class="p">:</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUTS</span> <span class="p">|</span>
+            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWIPC</span> <span class="p">|</span>
+            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWPID</span> <span class="p">|</span>
+            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWNS</span>  <span class="p">|</span>
+            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWUSER</span><span class="p">|</span>
+            <span class="nx">syscall</span><span class="p">.</span><span class="nx">CLONE_NEWNET</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdin</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdin</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdout</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stderr</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span>
+    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">cmd</span><span class="p">.</span><span class="nf">Run</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+        <span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div><h3 id="验证-network-是否被隔离">验证 Network 是否被隔离</h3>
 <p>我们使用 <code>ifconfig</code> 查看网络配置</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># linux terminal</span>
-</span></span><span class="line"><span class="cl">sh-4.4$ ifconfig
-</span></span><span class="line"><span class="cl">eth0: <span class="nv">flags</span><span class="o">=</span>4163&lt;UP,BROADCAST,RUNNING,MULTICAST&gt;  mtu <span class="m">1500</span>
-</span></span><span class="line"><span class="cl">        inet 172.17.0.2  netmask 255.255.0.0  broadcast 172.17.255.255
-</span></span><span class="line"><span class="cl">        ether 02:42:ac:11:00:02  txqueuelen <span class="m">0</span>  <span class="o">(</span>Ethernet<span class="o">)</span>
-</span></span><span class="line"><span class="cl">        RX packets <span class="m">747</span>  bytes <span class="m">6368553</span> <span class="o">(</span>6.0 MiB<span class="o">)</span>
-</span></span><span class="line"><span class="cl">        RX errors <span class="m">0</span>  dropped <span class="m">0</span>  overruns <span class="m">0</span>  frame <span class="m">0</span>
-</span></span><span class="line"><span class="cl">        TX packets <span class="m">721</span>  bytes <span class="m">85839</span> <span class="o">(</span>83.8 KiB<span class="o">)</span>
-</span></span><span class="line"><span class="cl">        TX errors <span class="m">0</span>  dropped <span class="m">0</span> overruns <span class="m">0</span>  carrier <span class="m">0</span>  collisions <span class="m">0</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">lo: <span class="nv">flags</span><span class="o">=</span>73&lt;UP,LOOPBACK,RUNNING&gt;  mtu <span class="m">65536</span>
-</span></span><span class="line"><span class="cl">        inet 127.0.0.1  netmask 255.0.0.0
-</span></span><span class="line"><span class="cl">        loop  txqueuelen <span class="m">1000</span>  <span class="o">(</span>Local Loopback<span class="o">)</span>
-</span></span><span class="line"><span class="cl">        RX packets <span class="m">0</span>  bytes <span class="m">0</span> <span class="o">(</span>0.0 B<span class="o">)</span>
-</span></span><span class="line"><span class="cl">        RX errors <span class="m">0</span>  dropped <span class="m">0</span>  overruns <span class="m">0</span>  frame <span class="m">0</span>
-</span></span><span class="line"><span class="cl">        TX packets <span class="m">0</span>  bytes <span class="m">0</span> <span class="o">(</span>0.0 B<span class="o">)</span>
-</span></span><span class="line"><span class="cl">        TX errors <span class="m">0</span>  dropped <span class="m">0</span> overruns <span class="m">0</span>  carrier <span class="m">0</span>  collisions <span class="m">0</span>
-</span></span></code></pre></div><div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># main</span>
-</span></span><span class="line"><span class="cl">$ ifconfig
-</span></span></code></pre></div><p>我们发现，对于 main 进程来说没有发现任何网络设备，可以肯定 main 进程的网络已经被隔离开了。</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="c1"># linux terminal</span>
+sh-4.4$ ifconfig
+eth0: <span class="nv">flags</span><span class="o">=</span>4163&lt;UP,BROADCAST,RUNNING,MULTICAST&gt;  mtu <span class="m">1500</span>
+        inet 172.17.0.2  netmask 255.255.0.0  broadcast 172.17.255.255
+        ether 02:42:ac:11:00:02  txqueuelen <span class="m">0</span>  <span class="o">(</span>Ethernet<span class="o">)</span>
+        RX packets <span class="m">747</span>  bytes <span class="m">6368553</span> <span class="o">(</span>6.0 MiB<span class="o">)</span>
+        RX errors <span class="m">0</span>  dropped <span class="m">0</span>  overruns <span class="m">0</span>  frame <span class="m">0</span>
+        TX packets <span class="m">721</span>  bytes <span class="m">85839</span> <span class="o">(</span>83.8 KiB<span class="o">)</span>
+        TX errors <span class="m">0</span>  dropped <span class="m">0</span> overruns <span class="m">0</span>  carrier <span class="m">0</span>  collisions <span class="m">0</span>
+
+lo: <span class="nv">flags</span><span class="o">=</span>73&lt;UP,LOOPBACK,RUNNING&gt;  mtu <span class="m">65536</span>
+        inet 127.0.0.1  netmask 255.0.0.0
+        loop  txqueuelen <span class="m">1000</span>  <span class="o">(</span>Local Loopback<span class="o">)</span>
+        RX packets <span class="m">0</span>  bytes <span class="m">0</span> <span class="o">(</span>0.0 B<span class="o">)</span>
+        RX errors <span class="m">0</span>  dropped <span class="m">0</span>  overruns <span class="m">0</span>  frame <span class="m">0</span>
+        TX packets <span class="m">0</span>  bytes <span class="m">0</span> <span class="o">(</span>0.0 B<span class="o">)</span>
+        TX errors <span class="m">0</span>  dropped <span class="m">0</span> overruns <span class="m">0</span>  carrier <span class="m">0</span>  collisions <span class="m">0</span>
+</code></pre></div><div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="c1"># main</span>
+$ ifconfig
+
+</code></pre></div><p>我们发现，对于 main 进程来说没有发现任何网络设备，可以肯定 main 进程的网络已经被隔离开了。</p>
 <h2 id="summary">Summary</h2>
 <p>Namespace 是 Linux 内核用来隔离内核资源的方式。
 我们可以使用 Namespace 让不同的进程的资源隔离开，同时让他们只能看到自己的东西，只能操作自己的东西，而感受不到其他 Namespace 的进程的存在，从而实现一种「虚拟化」。</p>

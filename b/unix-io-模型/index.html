@@ -25,7 +25,7 @@
 在发起 recvform 之后一直等待数据准备完毕 在数据准备好后需要等待 OS 内核拷贝到用户空间程序 模型简单，实现难度低，适用于并发量较小的应用开发，但是由于整个过程都被阻塞，性能较低
 单线程 for true { var client = accept(serverFd) // 等待客户端建立连接 var n int = read(client, buffer) // 读入客户端发来的数据, 网卡 -&amp;gt; 内核缓冲区 -&amp;gt; 用户缓冲区 handle(buffer) // 处理数据 close(serverFd) // 关闭连接 } 多线程 服务端使用多线程，可以完成并发处理，但是随着线程数的变多，占用的内存会越来越大，上下文的开销也会越来越大, 为每一个连接都开启一个线程也不一定是一个好的选择"><meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:image" content='https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/bio.png' />
-    <link rel="shortcut icon" href="/img/favicon.ico" />
+    <link rel="shortcut icon" href="/assets/img/favicon.ico" />
 
   
     </head>
@@ -71,7 +71,7 @@
                     
                     
                         
-                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                        <img src="/img/avatar_hua20f156df935cf86424dc7825c362ff0_232994_300x0_resize_box_3.png" width="300"
                             height="300" class="site-logo" loading="lazy" alt="Avatar">
                     
                 

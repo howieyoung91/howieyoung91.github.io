@@ -27,7 +27,7 @@ ConfigurationApplicationContext ConfigurationApplicationContext 为 ApplicationC
 public interface ConfigurableApplicationContext extends ApplicationContext { /** * 刷新容器 */ void refresh() throws BeansException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException; void registerShutdownHook(); void close(); } AbstractApplicationContext AbstractApplicationContext 实现了上面的三个方法,其中refresh是最重要的
 这里的处理逻辑和Spring有点细微差别,但是总体是差不多的,都是在进行容器的创建,BeanDefinition的读入,Bean的创建,以及一些组件的初始化 这里用了模板方法模式, 部分方法交给子类实现
 public abstract class AbstractApplicationContext extends DefaultResourceLoader implements ConfigurableApplicationContext { public static final String APPLICATION_EVENT_MULTICASTER_BEAN_NAME = &amp;#34;applicationEventMulticaster&amp;#34;; private static final Logger LOGGER = LoggerFactory.">
-    <link rel="shortcut icon" href="/img/favicon.ico" />
+    <link rel="shortcut icon" href="/assets/img/favicon.ico" />
 
   
     </head>
@@ -73,7 +73,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader i
                     
                     
                         
-                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                        <img src="/img/avatar_hua20f156df935cf86424dc7825c362ff0_232994_300x0_resize_box_3.png" width="300"
                             height="300" class="site-logo" loading="lazy" alt="Avatar">
                     
                 

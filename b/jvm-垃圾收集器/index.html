@@ -31,7 +31,7 @@ ParNew 特性 ParNew 实际上就是 Serial 的多线程版本
 Parallel Scavenge 特性 Parallel Scavenge是一个新生代收集器, 它也是采用的复制算法, 是并行的多线程收集器。这个收集器主要关注吞吐量, 吞吐量 = 运行用户代码时间 / (运行用户代码时间 &#43; gc时间).
 GC 自适应的调节策略： Parallel Scavenge 收集器有一个参数-XX:&#43;UseAdaptiveSizePolicy. 当这个参数打开之后, 就不需要手工指定新生代的大小(-Xmn), Eden 与 Survivor 区的比例(-XX:SurvivorRatio)、晋升老年代对象年龄(-XX:PretenureSizeThreshold)等细节参数了, 虚拟机会根据当前系统的运行情况收集性能监控信息, 动态调整这些参数以提供最合适的停顿时间或者最大的吞吐量, 这种调节方式称为 GC 自适应的调节策略（GC Ergonomics）。"><meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:image" content='https://howieyoung.oss-cn-chengdu.aliyuncs.com/blog/img/gc.png' />
-    <link rel="shortcut icon" href="/img/favicon.ico" />
+    <link rel="shortcut icon" href="/assets/img/favicon.ico" />
 
   
     </head>
@@ -77,7 +77,7 @@ GC 自适应的调节策略： Parallel Scavenge 收集器有一个参数-XX:&#4
                     
                     
                         
-                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                        <img src="/img/avatar_hua20f156df935cf86424dc7825c362ff0_232994_300x0_resize_box_3.png" width="300"
                             height="300" class="site-logo" loading="lazy" alt="Avatar">
                     
                 

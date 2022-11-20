@@ -336,18 +336,18 @@
 <ol start="0">
 <li>搜索并查看一下 CentOS 的 image</li>
 </ol>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">docker search centos
-</span></span></code></pre></div><ol>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker search centos
+</code></pre></div><ol>
 <li>使用 <code>pull</code> 把 image 拉下来</li>
 </ol>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">docker pull centos
-</span></span></code></pre></div><ol start="2">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker pull centos
+</code></pre></div><ol start="2">
 <li>运行并进入容器
 这里把宿主机的 22222 端口和 CentOS 的 22 端口进行映射，使用 <code>--privileged=true</code> 给予足够的权限，否则打开 SSH 时可能提示权限不够</li>
 </ol>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">docker run -tid -p 22222:22 centos --privileged<span class="o">=</span><span class="nb">true</span> centos /sbin/init
-</span></span><span class="line"><span class="cl">docker <span class="nb">exec</span> -it centos /bin/bash
-</span></span></code></pre></div><h2 id="init-centos">Init CentOS</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">docker run -tid -p 22222:22 centos --privileged<span class="o">=</span><span class="nb">true</span> centos /sbin/init
+docker <span class="nb">exec</span> -it centos /bin/bash
+</code></pre></div><h2 id="init-centos">Init CentOS</h2>
 <p>进入容器之后，我们需要把 SSH 打开，方便宿主机连接</p>
 <ol start="0">
 <li>首先更新下 yum 的 source，如果 CentOS 版本太高的话，不更新安装不上，下面两个命令执行一下就好</li>
@@ -359,34 +359,34 @@
 <ol>
 <li>安装 SSH Server</li>
 </ol>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">yum -y install openssh-server
-</span></span></code></pre></div><ol start="2">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">yum -y install openssh-server
+</code></pre></div><ol start="2">
 <li>打开 SSH Server</li>
 </ol>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">sudo service sshd start
-</span></span></code></pre></div><p>如果不存在 service 的话， 把 initscripts 安装一下再执行上面的命令：<code>yum -y install initscripts</code></p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">sudo service sshd start
+</code></pre></div><p>如果不存在 service 的话， 把 initscripts 安装一下再执行上面的命令：<code>yum -y install initscripts</code></p>
 <ol start="3">
 <li>修改密码</li>
 </ol>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl"><span class="c1"># 安装 passwd</span>
-</span></span><span class="line"><span class="cl">yum install passwd -y
-</span></span><span class="line"><span class="cl"><span class="c1"># 执行 passwd 然后输入你的密码</span>
-</span></span><span class="line"><span class="cl">passwd
-</span></span></code></pre></div><p>到这里 SSH 基本就算完成了，可以使用 netstat 查看 22 端口是否打开</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl"># 如果 netstat 不存在的话先安装 net-tools
-</span></span><span class="line"><span class="cl">yum install net-tools
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"># 查看端口
-</span></span><span class="line"><span class="cl">netstat -ntlp
-</span></span></code></pre></div><p>我的执行结果是：</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">Active Internet connections (only servers)
-</span></span><span class="line"><span class="cl">Proto  Recv-Q  Send-Q  Local Address  Foreign Address State   PID/Program  name
-</span></span><span class="line"><span class="cl">tcp         0       0  0.0.0.0:22     0.0.0.0:*       LISTEN  52/sshd
-</span></span><span class="line"><span class="cl">tcp6        0       0  :::22          :::*            LISTEN  52/sshd
-</span></span></code></pre></div><p>可以看到 22 端口已经被打开</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="c1"># 安装 passwd</span>
+yum install passwd -y
+<span class="c1"># 执行 passwd 然后输入你的密码</span>
+passwd
+</code></pre></div><p>到这里 SSH 基本就算完成了，可以使用 netstat 查看 22 端口是否打开</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"># 如果 netstat 不存在的话先安装 net-tools
+yum install net-tools
+
+# 查看端口
+netstat -ntlp
+</code></pre></div><p>我的执行结果是：</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback">Active Internet connections (only servers)
+Proto  Recv-Q  Send-Q  Local Address  Foreign Address State   PID/Program  name
+tcp         0       0  0.0.0.0:22     0.0.0.0:*       LISTEN  52/sshd
+tcp6        0       0  :::22          :::*            LISTEN  52/sshd
+</code></pre></div><p>可以看到 22 端口已经被打开</p>
 <p>输入 <code>exit</code> 退出 CentOS，回到宿主机，输入以下命令和密码便能进入到 CentOS</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">ssh root@127.0.0.1 -p <span class="m">22222</span>
-</span></span></code></pre></div><h2 id="开发环境搭建">开发环境搭建</h2>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell">ssh root@127.0.0.1 -p <span class="m">22222</span>
+</code></pre></div><h2 id="开发环境搭建">开发环境搭建</h2>
 <p>开发环境搭建非常简单，在 Goland 中把 SSH 配置好，并设置为 Linux + amd64 即可。<br>
 相应地， VSCode 也有 SSH 插件，最终把 elf 拿到 CentOS 上 run 就行了，开发全在本地。</p>
 

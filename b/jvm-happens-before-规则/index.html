@@ -15,7 +15,7 @@ read/load,store/write必须成对出现 变量在工作内存中改变了必须�
 <meta name="twitter:title" content="JVM -  happens-before 规则">
 <meta name="twitter:description" content=" 操作 作用 lock 把一个变量表示为一个线程独占, 作用于主内存的变量 unlock 把一个变量从锁定状态释放, 作用于主内存的变量 read 把主内存的变量传输到工作内存, 作用于主内存的变量 load 把 read 操作的得到的变量放入工作内存的变量副本,作用于工作内存的变量 use 把一个变量的值传给执行引擎,作用于工作内存的变量 assign 把一个从执行引擎接受到的值赋给工作内存的变量 store 把一个工作内存的一个变量传送到主内存, 作用于工作内存的变量 write 把store得到的变量写入主内存, 作用于主内存的变量 JMM 还规定了如下规则:
 read/load,store/write必须成对出现 变量在工作内存中改变了必须写回主内存, 不允许丢弃assign 不允许一个线程无原因地把数据写回主内存 在工作内存中不允许使用未初始化的变量, 即在use,store之前必须assign或load 一个变量只能被一个线程lock,同一个线程可以多次lock同一个变量 (可重入) 如果对一个变量执行 lock,那么工作内存要清空这个变量的值, 在执行引擎之前使用之前, 需要重新 load或assign (这也是为什么加锁后线程安全的原因) 对一个变量没有lock,就不允许对它unlock,也不允许unlock被其他线程 lock 住的变量 unlock之前要执行store,write,把工作内存的变量写回主内存 happens-before 操作 作用 程序次序规则 一个线程内,写在前面的操作先于写在后面的操作 管程锁定规则 对于同一个锁, unlock必须先于lock volatile 规则 对一个 volatile 变量,写操作先于读操作 线程启动规则 Thread#start先于此线程的所有动作 线程终止规则 线程的所有操作先于对此线程的终止检测 线程中断规则 线程的 interrupt 方法的调用先于中断线程检测到中断事件 对象终结规则 一个对象的构造函数的结束先于finalize方法的开始 传递性 A happens-before B, B happens-before C =&amp;gt; A happens-before C ">
-    <link rel="shortcut icon" href="/img/favicon.ico" />
+    <link rel="shortcut icon" href="/assets/img/favicon.ico" />
 
   
     </head>
@@ -61,7 +61,7 @@ read/load,store/write必须成对出现 变量在工作内存中改变了必须�
                     
                     
                         
-                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                        <img src="/img/avatar_hua20f156df935cf86424dc7825c362ff0_232994_300x0_resize_box_3.png" width="300"
                             height="300" class="site-logo" loading="lazy" alt="Avatar">
                     
                 

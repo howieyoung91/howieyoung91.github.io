@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://yanghaoyu.xyz/b/build-env/</loc>
+    <loc>https://yanghaoyu.xyz/b/porrima/build-env/</loc>
     <lastmod>2022-11-08T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://yanghaoyu.xyz/tags/docs/flora/intro/1.intro/</loc>
@@ -26,7 +26,7 @@
     <loc>https://yanghaoyu.xyz/tags/docs/flora/ioc/7.applicationcontext/</loc>
     <lastmod>2022-02-02T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://yanghaoyu.xyz/b/1.linux-namespace/</loc>
+    <loc>https://yanghaoyu.xyz/b/porrima/1.linux-namespace/</loc>
     <lastmod>2022-11-09T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://yanghaoyu.xyz/b/refactor-mysterious-name/</loc>

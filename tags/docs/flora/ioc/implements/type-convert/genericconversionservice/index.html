@@ -15,7 +15,7 @@ public class GenericConversionService implements ConversionService, ConverterReg
 <meta name="twitter:title" content="GenericConversionService">
 <meta name="twitter:description" content="GenericConversionService 内部存了所有的 GenericConverter (Converter,ConverterFactory都要适配GenericConverter) 封装了一些操作, 主要向外提供了 convert 和 canConvert 两个接口
 public class GenericConversionService implements ConversionService, ConverterRegistry { private Map&amp;lt;GenericConverter.ConvertiblePair, GenericConverter&amp;gt; converters = new HashMap&amp;lt;&amp;gt;(); @Override public boolean canConvert(Class&amp;lt;?&amp;gt; sourceType, Class&amp;lt;?&amp;gt; targetType) { return getConverter(sourceType, targetType) != null; } @Override public &amp;lt;T&amp;gt; T convert(Object source, Class&amp;lt;T&amp;gt; targetType) { Class&amp;lt;?&amp;gt; sourceType = source.getClass(); GenericConverter converter = getConverter(sourceType, targetType); if (converter == null) { throw new RuntimeException(&amp;#34;find no converter to convert &amp;#34; &#43; sourceType &#43; &amp;#34; to &amp;#34; &#43; targetType); } return (T) converter.">
-    <link rel="shortcut icon" href="/img/favicon.ico" />
+    <link rel="shortcut icon" href="/assets/img/favicon.ico" />
 
   
     </head>
@@ -61,7 +61,7 @@ public class GenericConversionService implements ConversionService, ConverterReg
                     
                     
                         
-                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                        <img src="/img/avatar_hua20f156df935cf86424dc7825c362ff0_232994_300x0_resize_box_3.png" width="300"
                             height="300" class="site-logo" loading="lazy" alt="Avatar">
                     
                 

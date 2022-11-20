@@ -18,7 +18,7 @@ public interface BeanDefinitionFileReader extends BeanDefinitionReader { Resourc
 <meta name="twitter:description" content="BeanDefinitionReader 可以从 Resource 中读入 BeanDefinition,并把 BeanDefinition 注册到 BeanRegistry 中
 public interface BeanDefinitionReader { BeanDefinitionRegistry getRegistry(); } AbstractBeanDefinitionReader public abstract class AbstractBeanDefinitionReader implements BeanDefinitionReader { private final BeanDefinitionRegistry registry; public AbstractBeanDefinitionReader(BeanDefinitionRegistry registry) { this.registry = registry; } @Override public BeanDefinitionRegistry getRegistry() { return registry; } } BeanDefinitionFileReader BeanDefinitionFileReader 扩展 BeanDefinitionReader,新增从 Resource加载 BeanDefinition,表示有从文件读入BeanDefinition的能力
 public interface BeanDefinitionFileReader extends BeanDefinitionReader { ResourceLoader getResourceLoader(); void loadBeanDefinitions(Resource resource) throws BeansException, IOException, ClassNotFoundException; void loadBeanDefinitions(Resource... resources) throws BeansException, IOException; void loadBeanDefinitions(String location) throws BeansException, IOException; void loadBeanDefinitions(String.">
-    <link rel="shortcut icon" href="/img/favicon.ico" />
+    <link rel="shortcut icon" href="/assets/img/favicon.ico" />
 
   
     </head>
@@ -64,7 +64,7 @@ public interface BeanDefinitionFileReader extends BeanDefinitionReader { Resourc
                     
                     
                         
-                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                        <img src="/img/avatar_hua20f156df935cf86424dc7825c362ff0_232994_300x0_resize_box_3.png" width="300"
                             height="300" class="site-logo" loading="lazy" alt="Avatar">
                     
                 

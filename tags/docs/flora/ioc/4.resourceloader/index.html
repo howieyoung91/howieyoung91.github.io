@@ -15,7 +15,7 @@ public interface ResourceLoader { String CLASSPATH_URL_PREFIX = &amp;#34;classpa
 <meta name="twitter:title" content="ResourceLoader">
 <meta name="twitter:description" content="ResourceLoader 用于加载 Resource
 public interface ResourceLoader { String CLASSPATH_URL_PREFIX = &amp;#34;classpath:&amp;#34;; Resource getResource(String location); } DefaultResourceLoader public class DefaultResourceLoader implements ResourceLoader { @Override public Resource getResource(String location) { if (location == null) { throw new NullPointerException(&amp;#34;location must not be null!&amp;#34;); } if (location.startsWith(CLASSPATH_URL_PREFIX)) { return new ClassPathResource(location.substring(CLASSPATH_URL_PREFIX.length())); } else { try { URL url = new URL(location); return new UrlResource(url); } catch (MalformedURLException e) { return new FileSystemResource(location); } } } } ">
-    <link rel="shortcut icon" href="/img/favicon.ico" />
+    <link rel="shortcut icon" href="/assets/img/favicon.ico" />
 
   
     </head>
@@ -61,7 +61,7 @@ public interface ResourceLoader { String CLASSPATH_URL_PREFIX = &amp;#34;classpa
                     
                     
                         
-                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                        <img src="/img/avatar_hua20f156df935cf86424dc7825c362ff0_232994_300x0_resize_box_3.png" width="300"
                             height="300" class="site-logo" loading="lazy" alt="Avatar">
                     
                 

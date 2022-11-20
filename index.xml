@@ -8,11 +8,11 @@
         <language>en-us</language>
         <lastBuildDate>Wed, 09 Nov 2022 00:00:00 +0000</lastBuildDate><atom:link href="https://yanghaoyu.xyz/index.xml" rel="self" type="application/rss+xml" /><item>
         <title>「手写 Docker」 0. 搭建 Linux &#43; Golang 环境</title>
-        <link>https://yanghaoyu.xyz/b/build-env/</link>
+        <link>https://yanghaoyu.xyz/b/porrima/build-env/</link>
         <pubDate>Tue, 08 Nov 2022 00:00:00 +0000</pubDate>
         
-        <guid>https://yanghaoyu.xyz/b/build-env/</guid>
-        <description>&lt;h2 id=&#34;install-centos&#34;&gt;Install CentOS&lt;/h2&gt;
+        <guid>https://yanghaoyu.xyz/b/porrima/build-env/</guid>
+        <description>&lt;img src="https://yanghaoyu.xyz/assets/img/hero/imitate-docker.drawio.png" alt="Featured image of post 「手写 Docker」 0. 搭建 Linux &#43; Golang 环境" /&gt;&lt;h2 id=&#34;install-centos&#34;&gt;Install CentOS&lt;/h2&gt;
 &lt;ol start=&#34;0&#34;&gt;
 &lt;li&gt;搜索并查看一下 CentOS 的 image&lt;/li&gt;
 &lt;/ol&gt;
@@ -1567,11 +1567,11 @@
         </item>
         <item>
         <title>「手写 Docker」 1. 使用 Namespace 隔离资源</title>
-        <link>https://yanghaoyu.xyz/b/1.linux-namespace/</link>
+        <link>https://yanghaoyu.xyz/b/porrima/1.linux-namespace/</link>
         <pubDate>Wed, 09 Nov 2022 00:00:00 +0000</pubDate>
         
-        <guid>https://yanghaoyu.xyz/b/1.linux-namespace/</guid>
-        <description>&lt;hr&gt;
+        <guid>https://yanghaoyu.xyz/b/porrima/1.linux-namespace/</guid>
+        <description>&lt;img src="https://yanghaoyu.xyz/assets/img/hero/imitate-docker.drawio.png" alt="Featured image of post 「手写 Docker」 1. 使用 Namespace 隔离资源" /&gt;&lt;hr&gt;
 &lt;h2 id=&#34;introduction&#34;&gt;Introduction&lt;/h2&gt;
 &lt;p&gt;在 Linux 中每一个进程都有自己所属的 Namespace，默认所有进程都运行在 &lt;code&gt;root Namespace&lt;/code&gt; 下，共享全局资源。&lt;br&gt;
 同时 Linux 大致提供了以下几种 Namespace 功能帮助我们进行资源隔离。&lt;/p&gt;
@@ -1617,7 +1617,6 @@
 &lt;/tbody&gt;
 &lt;/table&gt;
 &lt;h3 id=&#34;相关的-system-call&#34;&gt;相关的 System Call&lt;/h3&gt;
-&lt;!-- clone 函数不是 POSIX 接口函数，不能跨平台使用，包含头文件前，必须定义 `#define _GNU_SOURCE` --&gt;
 &lt;ol start=&#34;0&#34;&gt;
 &lt;li&gt;&lt;code&gt;clone()&lt;/code&gt; 创建新进程，可以指定新进程的 Namespace&lt;/li&gt;
 &lt;/ol&gt;
@@ -1700,7 +1699,7 @@ ls -l /proc/$$/ns | awk &#39;{print $1,$(NF-2),$(NF-1),$NF}&#39;
 &lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;m&#34;&gt;1&lt;/span&gt;
 &lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;当前进程的 id 变成了 1，表明 pid 已经隔离&lt;/p&gt;
 &lt;h2 id=&#34;ipc-namespace&#34;&gt;IPC Namespace&lt;/h2&gt;
-&lt;p&gt;IPC，进程间通信，主要包括包括 &lt;code&gt;Pipe&lt;/code&gt; &lt;code&gt;Socket&lt;/code&gt; &lt;code&gt;Semaphore&lt;/code&gt; &lt;code&gt;MQ&lt;/code&gt; &lt;code&gt;Signal&lt;/code&gt; &lt;code&gt;mmap&lt;/code&gt; 等。&lt;/p&gt;
+&lt;p&gt;IPC，进程间通信，主要包括 &lt;code&gt;Pipe&lt;/code&gt; &lt;code&gt;Socket&lt;/code&gt; &lt;code&gt;Semaphore&lt;/code&gt; &lt;code&gt;MQ&lt;/code&gt; &lt;code&gt;Signal&lt;/code&gt; &lt;code&gt;mmap&lt;/code&gt; 等。&lt;/p&gt;
 &lt;blockquote&gt;
 &lt;p&gt;在 Linux 中，主要有两套接口 &lt;code&gt;System V&lt;/code&gt; 和 &lt;code&gt;POSIX&lt;/code&gt; 实现 IPC&lt;/p&gt;
 &lt;ol&gt;
@@ -1708,8 +1707,8 @@ ls -l /proc/$$/ns | awk &#39;{print $1,$(NF-2),$(NF-1),$NF}&#39;
 &lt;li&gt;POSIX: IEEE 制定的一组接口，兼容了绝大部分 System V，移植性好&lt;/li&gt;
 &lt;/ol&gt;
 &lt;/blockquote&gt;
-&lt;p&gt;IPC Namespace 用来隔离 System V IPC 和 POSIX message queues。 每一个 IPC Namespace
-都有自己的 System V IPC 和 POSIX message queue。&lt;/p&gt;
+&lt;p&gt;IPC Namespace 用来隔离 System V IPC 和 POSIX message queues。&lt;br&gt;
+每一个 IPC Namespace 都有自己的 System V IPC 和 POSIX message queue。&lt;/p&gt;
 &lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;main&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
 &lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;kd&#34;&gt;var&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;cmd&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;exec&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Command&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;s&#34;&gt;&amp;#34;sh&amp;#34;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
 &lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;nx&#34;&gt;cmd&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;SysProcAttr&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;o&#34;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;syscall&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nx&#34;&gt;SysProcAttr&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
@@ -1782,6 +1781,16 @@ ls -l /proc/$$/ns | awk &#39;{print $1,$(NF-2),$(NF-1),$NF}&#39;
 &lt;p&gt;Mount Namespace 可以通过隔离挂载点，为各个进程提供单独的文件视图。
 在不同 Namespace 的进程中， 看到的文件系统层次是不一样的。在 Mount Namespace 中调用
 &lt;code&gt;mount()&lt;/code&gt; &lt;code&gt;umount() &lt;/code&gt;仅仅只会影响当前 Namespace 内的文件系统 ，而对全局的文件系统是没有影响的。&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;https://yanghaoyu.xyz/assets/img/file-system.drawio.png&#34;
+	
+	
+	
+	loading=&#34;lazy&#34;
+	
+		alt=&#34;file-system&#34;
+	
+	
+&gt;&lt;/p&gt;
 &lt;ol&gt;
 &lt;li&gt;mount/umount 函数原型：&lt;/li&gt;
 &lt;/ol&gt;
@@ -1836,7 +1845,6 @@ ls -l /proc/$$/ns | awk &#39;{print $1,$(NF-2),$(NF-1),$NF}&#39;
  &gt; Each of these operations is detailed later in this page. Further
  &gt; flags may be specified in mountflags to modify the behavior of
  &gt; `mount()`, as described below. --&gt;
-&lt;!-- ![file-system](/assets/img/file-system.drawio.png) --&gt;
 &lt;p&gt;go 代码如下：&lt;/p&gt;
 &lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;&lt;span class=&#34;kd&#34;&gt;func&lt;/span&gt; &lt;span class=&#34;nf&#34;&gt;main&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;()&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;{&lt;/span&gt;
 &lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    &lt;span class=&#34;kd&#34;&gt;var&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;cmd&lt;/span&gt; &lt;span class=&#34;p&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;nx&#34;&gt;exec&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;nf&#34;&gt;Command&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;s&#34;&gt;&amp;#34;sh&amp;#34;&lt;/span&gt;&lt;span class=&#34;p&#34;&gt;)&lt;/span&gt;
@@ -2000,7 +2008,7 @@ ls -l /proc/$$/ns | awk &#39;{print $1,$(NF-2),$(NF-1),$NF}&#39;
         <pubDate>Fri, 21 Oct 2022 00:00:00 +0000</pubDate>
         
         <guid>https://yanghaoyu.xyz/b/refactor-mysterious-name/</guid>
-        <description>&lt;p&gt;改变名字可能是最常用的重构手法，包括：&lt;/p&gt;
+        <description>&lt;img src="https://yanghaoyu.xyz/assets/img/hero/refactoring.drawio.png" alt="Featured image of post 「重构」代码的坏味道 - 1. Mysterious Name" /&gt;&lt;p&gt;改变名字可能是最常用的重构手法，包括：&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;改变函数声明&lt;/li&gt;
 &lt;li&gt;变量改名&lt;/li&gt;
@@ -2015,7 +2023,7 @@ ls -l /proc/$$/ns | awk &#39;{print $1,$(NF-2),$(NF-1),$NF}&#39;
         <pubDate>Sat, 22 Oct 2022 00:00:00 +0000</pubDate>
         
         <guid>https://yanghaoyu.xyz/b/refactor-duplicated-code/</guid>
-        <description>&lt;p&gt;为什么要合并重复代码呢？因为一旦有重复代码存在，那就表明你阅读这些代码就要加倍小心，注意细微差异。&lt;/p&gt;
+        <description>&lt;img src="https://yanghaoyu.xyz/assets/img/hero/refactoring.drawio.png" alt="Featured image of post 「重构」代码的坏味道 - 2. Duplicated Code" /&gt;&lt;p&gt;为什么要合并重复代码呢？因为一旦有重复代码存在，那就表明你阅读这些代码就要加倍小心，注意细微差异。&lt;/p&gt;
 &lt;p&gt;最单纯的重复代码是：同一个类的两个函数含有相同的表达式。
 针对这种情况，你需要做的就是采用 &lt;strong&gt;&lt;em&gt;提炼函数&lt;/em&gt;&lt;/strong&gt; 来抽取出重复代码。&lt;/p&gt;
 &lt;p&gt;如果重复代码只是相似，可以采用 &lt;strong&gt;&lt;em&gt;移动语句&lt;/em&gt;&lt;/strong&gt; 把相似的部分放在一起以便提炼函数&lt;/p&gt;
@@ -2028,7 +2036,7 @@ ls -l /proc/$$/ns | awk &#39;{print $1,$(NF-2),$(NF-1),$NF}&#39;
         <pubDate>Sun, 23 Oct 2022 00:00:00 +0000</pubDate>
         
         <guid>https://yanghaoyu.xyz/b/refactor-long-function/</guid>
-        <description>&lt;p&gt;尽可能地分解函数，哪怕替换后的函数调用动作比函数自身还长。&lt;br&gt;
+        <description>&lt;img src="https://yanghaoyu.xyz/assets/img/hero/refactoring.drawio.png" alt="Featured image of post 「重构」代码的坏味道 - 3. Long Function" /&gt;&lt;p&gt;尽可能地分解函数，哪怕替换后的函数调用动作比函数自身还长。&lt;br&gt;
 这是因为，关键并不在于函数的长度，而是在于函数能够「做什么」和「如何做」之间的语义差距。&lt;/p&gt;
 </description>
         </item>
@@ -2038,7 +2046,7 @@ ls -l /proc/$$/ns | awk &#39;{print $1,$(NF-2),$(NF-1),$NF}&#39;
         <pubDate>Mon, 24 Oct 2022 00:00:00 +0000</pubDate>
         
         <guid>https://yanghaoyu.xyz/b/refactor-long-parameter-list/</guid>
-        <description>&lt;p&gt;如果可以向某个参数发起查询而获得另外一个参数的值，那么就可以 &lt;strong&gt;&lt;em&gt;以查询取代传参&lt;/em&gt;&lt;/strong&gt; 去掉参数&lt;br&gt;
+        <description>&lt;img src="https://yanghaoyu.xyz/assets/img/hero/refactoring.drawio.png" alt="Featured image of post 「重构」代码的坏味道 - 4. Long Parameter List" /&gt;&lt;p&gt;如果可以向某个参数发起查询而获得另外一个参数的值，那么就可以 &lt;strong&gt;&lt;em&gt;以查询取代传参&lt;/em&gt;&lt;/strong&gt; 去掉参数&lt;br&gt;
 如果你发现你正在从现有的数据结构中抽取出很多数据项，那么可以考虑 &lt;strong&gt;&lt;em&gt;保持对象完整&lt;/em&gt;&lt;/strong&gt; 直接传入原来的数据结构&lt;br&gt;
 如果某几项参数总是同时出现，可以考虑 &lt;strong&gt;&lt;em&gt;引入参数对象&lt;/em&gt;&lt;/strong&gt;&lt;/p&gt;
 </description>
@@ -2049,7 +2057,7 @@ ls -l /proc/$$/ns | awk &#39;{print $1,$(NF-2),$(NF-1),$NF}&#39;
         <pubDate>Thu, 27 Oct 2022 00:00:00 +0000</pubDate>
         
         <guid>https://yanghaoyu.xyz/b/refactor-global-data/</guid>
-        <description>&lt;p&gt;全局变量很容易造成很多诡异的 Bug，因为在代码库的任何一个地方都可以修改他。&lt;br&gt;
+        <description>&lt;img src="https://yanghaoyu.xyz/assets/img/hero/refactoring.drawio.png" alt="Featured image of post 「重构」代码的坏味道 - 5. Global Data" /&gt;&lt;p&gt;全局变量很容易造成很多诡异的 Bug，因为在代码库的任何一个地方都可以修改他。&lt;br&gt;
 首先的防御手段就是 &lt;code&gt;封装变量&lt;/code&gt;，每当我们看到可能被各处代码污染的数据，就应该考虑封装这个变量，控制对这个变量的访问。&lt;br&gt;
 如果可以，应该尽可能地保持全局变量不被修改。&lt;/p&gt;
 </description>

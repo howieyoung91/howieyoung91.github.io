@@ -18,7 +18,7 @@ public interface Resource { InputStream getInputStream() throws IOException; } F
 <meta name="twitter:description" content="Resource 代表了一个文件资源
 本地资源 FileSystemResource ClasspathResource 网络资源 UrlResource Resource#getInputStream可以获取这个资源输入流
 public interface Resource { InputStream getInputStream() throws IOException; } FileSystemResource 文件系统的一个资源 public class FileSystemResource implements Resource { private final File file; private final String path; public FileSystemResource(File file) { this.file = file; this.path = file.getPath(); } public FileSystemResource(String path) { this.file = new File(path); this.path = path; } @Override public InputStream getInputStream() throws IOException { return new BufferedInputStream(new FileInputStream(this.file)); } public final String getPath() { return this.">
-    <link rel="shortcut icon" href="/img/favicon.ico" />
+    <link rel="shortcut icon" href="/assets/img/favicon.ico" />
 
   
     </head>
@@ -64,7 +64,7 @@ public interface Resource { InputStream getInputStream() throws IOException; } F
                     
                     
                         
-                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                        <img src="/img/avatar_hua20f156df935cf86424dc7825c362ff0_232994_300x0_resize_box_3.png" width="300"
                             height="300" class="site-logo" loading="lazy" alt="Avatar">
                     
                 

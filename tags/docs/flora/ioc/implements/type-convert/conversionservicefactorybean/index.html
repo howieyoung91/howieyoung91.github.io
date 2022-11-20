@@ -18,7 +18,7 @@ public class ConversionServiceFactoryBean implements FactoryBean&amp;lt;Conversi
 <meta name="twitter:description" content="ConversionServiceFactoryBean 生成一个ConversionService,向 BeanFactory 提供类型转换服务
 它实现了 InitializingBean 接口,在初始化时扫描 BeanDefinition 如果发现是 Converter GenericConverter ConverterFactory放入 ConversionService
 public class ConversionServiceFactoryBean implements FactoryBean&amp;lt;ConversionService&amp;gt;, InitializingBean, BeanFactoryAware { private static final Logger LOGGER = LoggerFactory.getLogger(ConversionServiceFactoryBean.class); private ConfigurableListableBeanFactory beanFactory; private GenericConversionService conversionService; @Override public ConversionService getObject() throws Exception { return conversionService; } @Override public Class&amp;lt;?&amp;gt; getObjectType() { return GenericConversionService.class; } @Override public boolean isSingleton() { return true; } @Override public void afterPropertiesSet() { this.conversionService = new DefaultConversionService(); registerConverters(); } private void registerConverters() { String[] beanNames = beanFactory.">
-    <link rel="shortcut icon" href="/img/favicon.ico" />
+    <link rel="shortcut icon" href="/assets/img/favicon.ico" />
 
   
     </head>
@@ -64,7 +64,7 @@ public class ConversionServiceFactoryBean implements FactoryBean&amp;lt;Conversi
                     
                     
                         
-                        <img src="/img/avatar_hud43952f77ede7221c1042d39edc1a07c_56301_300x0_resize_box_3.png" width="300"
+                        <img src="/img/avatar_hua20f156df935cf86424dc7825c362ff0_232994_300x0_resize_box_3.png" width="300"
                             height="300" class="site-logo" loading="lazy" alt="Avatar">
                     
                 
